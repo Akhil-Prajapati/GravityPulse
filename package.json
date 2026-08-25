@@ -1,0 +1,128 @@
+{
+  "name": "gravity-pulse",
+  "displayName": "GravityPulse - Antigravity Quota (AGQ) Battery",
+  "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, multi-model pinning, and live server tracking.",
+  "version": "1.0.0",
+  "publisher": "akhilninja",
+  "author": {
+    "name": "Akhil Prajapati"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akhilninja/GravityPulse"
+  },
+  "categories": [
+    "Machine Learning",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "antigravity",
+    "quota",
+    "battery",
+    "status bar",
+    "ai",
+    "token monitor",
+    "gemini",
+    "agq"
+  ],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./dist/extension.js",
+  "icon": "assets/icon.png",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "gravitypulse.showDashboard",
+        "title": "GravityPulse: Open Quota Battery Dashboard",
+        "category": "GravityPulse"
+      },
+      {
+        "command": "gravitypulse.switchModel",
+        "title": "GravityPulse: Switch Displayed Model in Status Bar",
+        "category": "GravityPulse"
+      },
+      {
+        "command": "gravitypulse.syncAntigravityLogs",
+        "title": "GravityPulse: Refresh Live Quota from Antigravity Server",
+        "category": "GravityPulse"
+      }
+    ],
+    "configuration": {
+      "title": "GravityPulse - Antigravity Quota Monitor",
+      "properties": {
+        "gravitypulse.pinnedModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "Gemini 3.7 Flash (High)",
+            "Claude Sonnet 4.6 (Thinking)"
+          ],
+          "description": "List of AI models to display simultaneously in the status bar."
+        },
+        "gravitypulse.displayStyle": {
+          "type": "string",
+          "enum": [
+            "zap-percent",
+            "activity-percent",
+            "battery-bar",
+            "minimal",
+            "detailed"
+          ],
+          "default": "zap-percent",
+          "description": "Status bar battery display style (e.g. $(zap) G3.7F: 94.1%, $(activity) G3.7F: 94.1%, [██████░░] 94.1%). Fully styled with Carbon Product Icons."
+        },
+        "gravitypulse.precision": {
+          "type": "string",
+          "enum": [
+            "integer",
+            "single-decimal"
+          ],
+          "default": "single-decimal",
+          "description": "Point-to-point status precision: Single decimal (e.g. 94.1%) or exact integer (e.g. 94%)."
+        },
+        "gravitypulse.pollingIntervalSeconds": {
+          "type": "number",
+          "default": 30,
+          "description": "Polling interval in seconds to fetch latest quota from local Antigravity Language Server."
+        },
+        "gravitypulse.warningThreshold": {
+          "type": "number",
+          "default": 20,
+          "description": "Battery percentage threshold below which the status bar turns Amber/Yellow."
+        },
+        "gravitypulse.criticalThreshold": {
+          "type": "number",
+          "default": 10,
+          "description": "Battery percentage threshold below which the status bar turns Red with Low-Battery warning."
+        },
+        "gravitypulse.showToastOnLowBattery": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification alert when battery drops below critical threshold."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "node scripts/package.js"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.1",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^2.19.0",
+    "typescript": "^5.9.3",
+    "vsce": "^2.15.0"
+  }
+}
