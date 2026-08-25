@@ -2,7 +2,7 @@
   "name": "gravity-pulse",
   "displayName": "GravityPulse - Antigravity Quota (AGQ) Battery",
   "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, multi-model pinning, and live server tracking.",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "publisher": "akhilninja",
   "author": {
     "name": "Akhil Prajapati"
@@ -69,14 +69,14 @@
         "gravitypulse.displayStyle": {
           "type": "string",
           "enum": [
+            "battery-bar",
             "zap-percent",
             "activity-percent",
-            "battery-bar",
             "minimal",
             "detailed"
           ],
-          "default": "zap-percent",
-          "description": "Status bar battery display style (e.g. $(zap) G3.7F: 94.1%, $(activity) G3.7F: 94.1%, [██████░░] 94.1%). Fully styled with Carbon Product Icons."
+          "default": "battery-bar",
+          "description": "Status bar battery display style (e.g. $(zap) G3.7F [███████░] 94.1%). Fully styled with Carbon Product Icons."
         },
         "gravitypulse.precision": {
           "type": "string",

@@ -22,35 +22,41 @@ export class DashboardManager {
       const pinned = this.quotaTracker.getPinnedModels();
       const snapshot = this.quotaTracker.getLatestSnapshot();
 
+      const isConnected = this.quotaTracker.isConnected();
+
+      if (!isConnected) {
+        items.push({
+          label: '$(sync~spin) Antigravity Server: Connecting / Offline',
+          description: 'Click to scan and reconnect to local Language Server',
+          detail: '   Attempts discovery across Windows, Linux & macOS processes and localhost ports',
+          action: 'sync'
+        });
+      }
+
       items.push({
         kind: vscode.QuickPickItemKind.Separator,
-        label: 'Select Models to Display in Status Bar'
+        label: isConnected ? '⚡ Models Quota (Click to Pin/Unpin)' : 'Models Selection (Click to Pin/Unpin)'
       });
 
-      if (models.length > 0) {
-        for (const m of models) {
-          const isPinned = pinned.includes(m.label);
-          const checkIcon = isPinned ? '$(check) ' : '$(circle-outline) ';
-          const statusIcon = m.isExhausted
-            ? '$(flame) '
-            : m.remainingPercentage < 20
-            ? '$(warning) '
-            : '$(zap) ';
+      for (const m of models) {
+        const isPinned = pinned.includes(m.label);
+        const checkIcon = isPinned ? '$(check) ' : '$(circle-outline) ';
+        const statusIcon = !isConnected
+          ? '$(symbol-misc) '
+          : m.isExhausted
+          ? '$(flame) '
+          : m.remainingPercentage < 20
+          ? '$(warning) '
+          : '$(zap) ';
 
-          const bar = this.drawProgressBar(m.remainingPercentage);
-          const pct = `${m.remainingPercentage.toFixed(1)}%`;
+        const bar = isConnected ? this.drawProgressBar(m.remainingPercentage) : '[----------]';
+        const pct = isConnected ? `${m.remainingPercentage.toFixed(1)}%` : 'Ready';
 
-          items.push({
-            label: `${checkIcon}${statusIcon}${m.label}`,
-            description: `${bar} ${pct}`,
-            detail: `   Auto-refill: ${m.timeUntilResetFormatted}`,
-            modelLabel: m.label
-          });
-        }
-      } else {
         items.push({
-          label: '$(sync~spin) Connecting...',
-          description: 'Fetching live quotas from Antigravity server...'
+          label: `${checkIcon}${statusIcon}${m.label}`,
+          description: `${bar} ${pct}`,
+          detail: isConnected ? `   Auto-refill: ${m.timeUntilResetFormatted}` : '   Will show exact battery once server connects',
+          modelLabel: m.label
         });
       }
 
@@ -75,7 +81,7 @@ export class DashboardManager {
       items.push(
         {
           label: '$(sync) Force Refresh Live Quota',
-          description: 'Query Antigravity Language Server for latest quota',
+          description: 'Scan and query Antigravity Language Server for latest quota',
           action: 'sync'
         },
         {
@@ -120,8 +126,21 @@ export class DashboardManager {
         pick.hide();
 
         if (action === 'sync') {
-          await this.liveClient.forceRefresh();
-          vscode.window.showInformationMessage('⚡ GravityPulse: Live quota refreshed from Antigravity.');
+          await vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: '⚡ GravityPulse: Connecting to Antigravity Language Server...',
+              cancellable: false
+            },
+            async () => {
+              const res = await this.liveClient.forceRefresh();
+              if (res) {
+                vscode.window.showInformationMessage('⚡ GravityPulse: Successfully connected to Antigravity Language Server!');
+              } else {
+                vscode.window.showWarningMessage('⚡ GravityPulse: Searching for Antigravity Language Server... Please ensure Google Antigravity IDE is running.');
+              }
+            }
+          );
         } else if (action === 'changeStyle') {
           await this.promptChangeStyle();
         } else if (action === 'changePrecision') {

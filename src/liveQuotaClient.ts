@@ -35,55 +35,50 @@ export class LiveQuotaClient implements vscode.Disposable {
   }
 
   public async init(): Promise<void> {
-    await this.discoverAndConnect();
+    const connected = await this.discoverAndConnect();
     const intervalSec = vscode.workspace
       .getConfiguration('gravitypulse')
       .get<number>('pollingIntervalSeconds', 30);
-    this.startPolling(intervalSec * 1000);
+
+    // If connected, poll at standard interval. If not connected yet, retry every 3.5 seconds
+    this.startPolling(connected ? intervalSec * 1000 : 3500);
   }
 
   public async forceRefresh(): Promise<LiveQuotaSnapshot | null> {
     if (!this.port || !this.csrfToken) {
       await this.discoverAndConnect();
     }
-    return this.fetchQuota();
+    const res = await this.fetchQuota();
+    if (!res) {
+      // Retry discovery once more on failure
+      this.port = 0;
+      this.csrfToken = '';
+      await this.discoverAndConnect();
+      return this.fetchQuota();
+    }
+    return res;
   }
 
   private async discoverAndConnect(): Promise<boolean> {
     try {
       const isWin = process.platform === 'win32';
-      let cmd = 'pgrep -af language_server || ps aux | grep language_server';
-      if (isWin) {
-        cmd = 'powershell -NoProfile -Command "Get-CimInstance Win32_Process -Filter \\"Name like \'%language_server%\'\\" | Select-Object ProcessId,CommandLine | ConvertTo-Json"';
-      }
+      const processes = await this.discoverLanguageServers(isWin);
 
-      const { stdout } = await execAsync(cmd).catch(() => ({ stdout: '' }));
-      if (!stdout) {
+      if (processes.length === 0) {
         return false;
       }
 
-      const tokenMatch = stdout.match(/--csrf_token[=\s]+([a-zA-Z0-9\-]+)/);
-      if (!tokenMatch) {
-        return false;
-      }
-      this.csrfToken = tokenMatch[1];
+      for (const proc of processes) {
+        const ports = await this.getListeningPorts(proc.pid, isWin);
 
-      // Extract PID
-      let pid = 0;
-      const pidMatch = stdout.match(/(\d+)\s+.*language_server/);
-      if (pidMatch) {
-        pid = parseInt(pidMatch[1], 10);
-      }
-
-      // Discover listening ports
-      const portList = await this.getListeningPorts(pid, isWin);
-
-      for (const p of portList) {
-        const ok = await this.testPort(p, this.csrfToken);
-        if (ok) {
-          this.port = p;
-          await this.fetchQuota();
-          return true;
+        for (const p of ports) {
+          const ok = await this.testPort(p, proc.csrfToken);
+          if (ok) {
+            this.port = p;
+            this.csrfToken = proc.csrfToken;
+            await this.fetchQuota();
+            return true;
+          }
         }
       }
     } catch {
@@ -92,22 +87,134 @@ export class LiveQuotaClient implements vscode.Disposable {
     return false;
   }
 
+  private async discoverLanguageServers(isWin: boolean): Promise<{ pid: number; csrfToken: string }[]> {
+    const results: { pid: number; csrfToken: string }[] = [];
+    const seenPids = new Set<number>();
+
+    const addCandidate = (pid: number, cmdLine: string) => {
+      if (!cmdLine || seenPids.has(pid)) {
+        return;
+      }
+      const tokenMatch = cmdLine.match(/--csrf_token[=\s]+([a-zA-Z0-9\-]+)/);
+      if (tokenMatch) {
+        seenPids.add(pid);
+        results.push({ pid, csrfToken: tokenMatch[1] });
+      }
+    };
+
+    if (isWin) {
+      // 1. PowerShell CIM / WMI JSON query
+      try {
+        const psCmd = 'powershell -NoProfile -NonInteractive -Command "Get-CimInstance Win32_Process | Where-Object { $_.Name -like \'*language_server*\' -or $_.CommandLine -like \'*csrf_token*\' } | Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress"';
+        const { stdout } = await execAsync(psCmd, { timeout: 4000 });
+        const trimmed = stdout.trim();
+        if (trimmed) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            const list = Array.isArray(parsed) ? parsed : [parsed];
+            for (const item of list) {
+              const pid = Number(item.ProcessId || item.processId || 0);
+              const cmd = String(item.CommandLine || item.commandLine || '');
+              if (pid > 0 && cmd) {
+                addCandidate(pid, cmd);
+              }
+            }
+          } catch {
+            // Regex fallback on raw output
+            const matches = trimmed.matchAll(/"ProcessId":\s*(\d+).*?"CommandLine":\s*"(.*?)"/g);
+            for (const m of matches) {
+              addCandidate(parseInt(m[1], 10), m[2]);
+            }
+          }
+        }
+      } catch {
+        // Fall through to WMIC
+      }
+
+      // 2. WMIC fallback
+      if (results.length === 0) {
+        try {
+          const wmicCmd = 'wmic process where "name like \'%language_server%\' or commandline like \'%csrf_token%\'" get ProcessId,CommandLine /format:csv';
+          const { stdout } = await execAsync(wmicCmd, { timeout: 4000 });
+          const lines = stdout.split('\n');
+          for (const line of lines) {
+            const parts = line.split(',');
+            if (parts.length >= 3) {
+              const cmd = parts[1];
+              const pid = parseInt(parts[2]?.trim(), 10);
+              if (pid > 0 && cmd) {
+                addCandidate(pid, cmd);
+              }
+            }
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    } else {
+      // Linux / macOS: ps / pgrep
+      try {
+        const cmd = 'ps -eo pid,command 2>/dev/null || ps aux 2>/dev/null || pgrep -af language_server 2>/dev/null';
+        const { stdout } = await execAsync(cmd, { timeout: 3000 });
+        const lines = stdout.split('\n');
+        for (const line of lines) {
+          if (line.includes('language_server') || line.includes('--csrf_token')) {
+            const pidMatch = line.trim().match(/^(\d+)\s+(.+)$/);
+            if (pidMatch) {
+              addCandidate(parseInt(pidMatch[1], 10), pidMatch[2]);
+            }
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
+    return results;
+  }
+
   private async getListeningPorts(pid: number, isWin: boolean): Promise<number[]> {
     const ports: number[] = [];
+    const allLocalPorts: number[] = [];
+
     try {
       if (isWin) {
-        const { stdout } = await execAsync(
-          `powershell -NoProfile -Command "Get-NetTCPConnection -OwningProcess ${pid} -State Listen | Select-Object -ExpandProperty LocalPort"`
-        ).catch(() => ({ stdout: '' }));
-        stdout.split('\n').forEach((l) => {
-          const num = parseInt(l.trim(), 10);
-          if (num > 0 && !ports.includes(num)) {
-            ports.push(num);
+        // 1. Fast netstat -ano -p tcp on Windows
+        const { stdout } = await execAsync('netstat -ano -p tcp', { timeout: 3000 }).catch(() => ({ stdout: '' }));
+        const lines = stdout.split('\n');
+        for (const line of lines) {
+          // Format: TCP    127.0.0.1:46583    0.0.0.0:0    LISTENING    12345
+          const match = line.match(/^\s*TCP\s+(?:127\.0\.0\.1|0\.0\.0\.0|\[::1\]|\[::\]):(\d+)\s+.*?LISTENING\s+(\d+)/i);
+          if (match) {
+            const portNum = parseInt(match[1], 10);
+            const linePid = parseInt(match[2], 10);
+            if (portNum > 0) {
+              if (!allLocalPorts.includes(portNum)) {
+                allLocalPorts.push(portNum);
+              }
+              if (linePid === pid && !ports.includes(portNum)) {
+                ports.push(portNum);
+              }
+            }
           }
-        });
+        }
+
+        // 2. PowerShell Get-NetTCPConnection fallback if no specific ports found for PID
+        if (ports.length === 0 && pid > 0) {
+          const psPortCmd = `powershell -NoProfile -NonInteractive -Command "Get-NetTCPConnection -OwningProcess ${pid} -State Listen | Select-Object -ExpandProperty LocalPort"`;
+          const { stdout: psOut } = await execAsync(psPortCmd, { timeout: 3000 }).catch(() => ({ stdout: '' }));
+          psOut.split('\n').forEach((l) => {
+            const num = parseInt(l.trim(), 10);
+            if (num > 0 && !ports.includes(num)) {
+              ports.push(num);
+            }
+          });
+        }
       } else {
         const pidFilter = pid > 0 ? `grep "pid=${pid}"` : 'grep "language_server"';
-        const { stdout } = await execAsync(`ss -tlnp 2>/dev/null | ${pidFilter} || lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null`).catch(() => ({ stdout: '' }));
+        const { stdout } = await execAsync(
+          `ss -tlnp 2>/dev/null | ${pidFilter} || lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null || netstat -tlnp 2>/dev/null`
+        ).catch(() => ({ stdout: '' }));
         const matches = stdout.match(/:(\d+)/g);
         if (matches) {
           matches.forEach((m) => {
@@ -121,7 +228,15 @@ export class LiveQuotaClient implements vscode.Disposable {
     } catch {
       // Ignore
     }
-    return ports;
+
+    // Return specific PID ports first, followed by other active local listening ports as fallback
+    const combined = [...ports];
+    for (const p of allLocalPorts) {
+      if (!combined.includes(p)) {
+        combined.push(p);
+      }
+    }
+    return combined;
   }
 
   private testPort(port: number, token: string): Promise<boolean> {
@@ -181,7 +296,10 @@ export class LiveQuotaClient implements vscode.Disposable {
 
   public async fetchQuota(): Promise<LiveQuotaSnapshot | null> {
     if (!this.port || !this.csrfToken) {
-      return null;
+      const ok = await this.discoverAndConnect();
+      if (!ok) {
+        return null;
+      }
     }
 
     return new Promise((resolve) => {
@@ -224,14 +342,22 @@ export class LiveQuotaClient implements vscode.Disposable {
                 // Ignore
               }
             }
+            this.port = 0;
+            this.csrfToken = '';
             resolve(null);
           });
         }
       );
 
-      req.on('error', () => resolve(null));
+      req.on('error', () => {
+        this.port = 0;
+        this.csrfToken = '';
+        resolve(null);
+      });
       req.on('timeout', () => {
         req.destroy();
+        this.port = 0;
+        this.csrfToken = '';
         resolve(null);
       });
       req.write(postData);
@@ -340,11 +466,23 @@ export class LiveQuotaClient implements vscode.Disposable {
     return `Auto-refills in ${duration} (${timeStr})`;
   }
 
+  private currentPollingInterval: number = 0;
+
   public startPolling(intervalMs: number): void {
     this.stopPolling();
-    this.pollingTimer = setInterval(() => {
+    this.currentPollingInterval = intervalMs;
+    this.pollingTimer = setInterval(async () => {
       if (!this.isDisposed) {
-        this.fetchQuota();
+        const snap = await this.fetchQuota();
+        if (snap) {
+          const standardSec = vscode.workspace
+            .getConfiguration('gravitypulse')
+            .get<number>('pollingIntervalSeconds', 30);
+          const standardMs = standardSec * 1000;
+          if (this.currentPollingInterval !== standardMs) {
+            this.startPolling(standardMs);
+          }
+        }
       }
     }, intervalMs);
   }

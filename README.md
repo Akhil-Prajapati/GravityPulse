@@ -3,7 +3,7 @@
 > 🔋 **Real-time, multi-model battery status bar monitor for Google Antigravity IDE with exact point-to-point decimal precision, model pinning, dedicated hover cards, and 4-tier warning color coding.**
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.2-purple.svg?style=flat-square&logo=visualstudiocode" alt="Open VSX" /></a>
+  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.4-purple.svg?style=flat-square&logo=visualstudiocode" alt="Open VSX" /></a>
   <a href="https://github.com/Akhil-Prajapati/GravityPulse"><img src="https://img.shields.io/badge/GitHub-GravityPulse-181717.svg?style=flat-square&logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/precision-point--to--point-34A853.svg?style=flat-square" alt="Point to Point" />
   <img src="https://img.shields.io/badge/status-live%20IDE%20server-4285F4.svg?style=flat-square" alt="Live Server" />
@@ -11,12 +11,14 @@
   <img src="https://img.shields.io/badge/license-MIT-EA4335.svg?style=flat-square" alt="License" />
 </p>
 
-```
-  ┌────────────────────────────────────────────────────────────────────────┐
-  │  ⚡ GravityPulse Battery Status                                         │
-  │  [ 🟢 70%+ Optimal ]  [ 🟡 40-70% Good ]  [ 🟠 20-40% Warning ]  [ 🔴 <20% Critical ]  │
-  └────────────────────────────────────────────────────────────────────────┘
-```
+### 🔋 4-Tier Live Battery Indicator
+
+| Level | Capacity Range | Warning Color | Battery State |
+| :---: | :---: | :---: | :--- |
+| 🟢 | **70% – 100%** | `#34A853` (Green) | **Optimal Capacity** |
+| 🟡 | **40% – 70%** | `#9ACD32` (Lime) | **Good Charge** |
+| 🟠 | **20% – 40%** | `#FB8C00` (Orange) | **Moderate Warning** |
+| 🔴 | **Below 20%** | `#EA4335` (Red) | **Critical Alert** |
 
 ---
 
@@ -53,9 +55,9 @@ Customize how your battery levels look in VS Code settings (`gravitypulse.displa
 
 | Style | Preview Example | Description |
 | :--- | :--- | :--- |
-| **Zap Percent** *(Default)* | `$(zap) G3.6F(M): 83.4%` | Carbon energy zap icon with model abbreviation & decimal percentage |
+| **Battery Bar** *(Default)* | `$(zap) G3.6F(M) [███████░] 83.4%` | Unicode segmented charge bar with model & percentage |
+| **Zap Percent** | `$(zap) G3.6F(M): 83.4%` | Carbon energy zap icon with model abbreviation & decimal percentage |
 | **Activity Percent** | `$(activity) Claude: 100.0%` | Carbon pulse activity wave icon |
-| **Battery Bar** | `$(zap) G3.6F(M) [███████░] 83.4%` | Unicode segmented charge bar with percentage |
 | **Minimalist** | `83.4% $(zap)` | Clean text-first minimalist badge |
 | **Detailed** | `$(zap) G3.6F(M): 83.4% [███████░]` | Model label, decimal percentage, and full progress bar |
 

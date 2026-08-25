@@ -50,8 +50,35 @@ export class QuotaTracker {
     return this.latestSnapshot;
   }
 
+  public isConnected(): boolean {
+    return !!(this.latestSnapshot && this.latestSnapshot.models.length > 0);
+  }
+
+  public getDefaultModels(): ModelQuotaInfo[] {
+    const defaultLabels = [
+      'Gemini 3.7 Flash (High)',
+      'Gemini 3.6 Flash (Medium)',
+      'Gemini 3.5 Flash (Medium)',
+      'Gemini 3.1 Pro (High)',
+      'Claude Sonnet 4.6 (Thinking)',
+      'Claude Opus 4.6 (Thinking)'
+    ];
+    return defaultLabels.map((lbl) => ({
+      label: lbl,
+      modelId: lbl.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+      remainingFraction: 1.0,
+      remainingPercentage: 100,
+      isExhausted: false,
+      resetTime: new Date(),
+      timeUntilResetFormatted: 'Connecting to server...'
+    }));
+  }
+
   public getModels(): ModelQuotaInfo[] {
-    return this.latestSnapshot?.models || [];
+    if (this.latestSnapshot && this.latestSnapshot.models.length > 0) {
+      return this.latestSnapshot.models;
+    }
+    return this.getDefaultModels();
   }
 
   public getPinnedModels(): string[] {
@@ -143,7 +170,7 @@ export class QuotaTracker {
     }
 
     return {
-      displayStyle: wsConfig.get<DisplayStyle>('displayStyle', 'zap-percent'),
+      displayStyle: wsConfig.get<DisplayStyle>('displayStyle', 'battery-bar'),
       precision: wsConfig.get<PrecisionMode>('precision', 'single-decimal'),
       pinnedModels: pinned,
       pollingIntervalSeconds: wsConfig.get<number>('pollingIntervalSeconds', 30),
