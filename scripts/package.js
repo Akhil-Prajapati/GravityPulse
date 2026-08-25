@@ -12,9 +12,8 @@ const path = require('path');
 const fs = require('fs');
 
 async function main() {
-  console.log('📦 Compiling and packaging GravityPulse for Antigravity / VS Code Marketplace...');
-
-  const packagePath = path.join(__dirname, '..', 'gravity-pulse-1.0.0.vsix');
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const packagePath = path.join(__dirname, '..', `gravity-pulse-${pkg.version}.vsix`);
 
   try {
     const result = await vsce.createVSIX({

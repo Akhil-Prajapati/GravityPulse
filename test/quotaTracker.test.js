@@ -8,6 +8,7 @@ function testPointToPointCalculations() {
     { fraction: 0.9412, expectedPercent: '94.1%', expectedInt: 94 },
     { fraction: 1.0, expectedPercent: '100.0%', expectedInt: 100 },
     { fraction: 0.8734, expectedPercent: '87.3%', expectedInt: 87 },
+    { fraction: 0.834, expectedPercent: '83.4%', expectedInt: 83 },
     { fraction: 0.1849, expectedPercent: '18.5%', expectedInt: 18 },
     { fraction: 0.082, expectedPercent: '8.2%', expectedInt: 8 },
     { fraction: 0.0, expectedPercent: '0.0%', expectedInt: 0 }
@@ -54,18 +55,43 @@ function testServerRefillTimeFormat() {
 function testCarbonThemeIcons() {
   console.log('🧪 Testing Carbon Product Icons...');
 
-  function getThemeIcon(percent, warningThreshold = 20, criticalThreshold = 10) {
-    if (percent <= criticalThreshold) return '$(flame)';
-    if (percent <= warningThreshold) return '$(warning)';
+  function getThemeIcon(percent) {
+    if (percent < 20) return '$(flame)';
+    if (percent < 40) return '$(warning)';
     return '$(zap)';
   }
 
   assert.strictEqual(getThemeIcon(100), '$(zap)');
-  assert.strictEqual(getThemeIcon(94.1), '$(zap)');
-  assert.strictEqual(getThemeIcon(18.5), '$(warning)');
-  assert.strictEqual(getThemeIcon(8.2), '$(flame)');
+  assert.strictEqual(getThemeIcon(83.4), '$(zap)');
+  assert.strictEqual(getThemeIcon(35.0), '$(warning)');
+  assert.strictEqual(getThemeIcon(15.0), '$(flame)');
 
   console.log('✅ Carbon Product Icons tests passed!');
+}
+
+function test4TierWarningColors() {
+  console.log('🧪 Testing 4-Tier Warning Color Scheme...');
+
+  function getModelColor(percent) {
+    if (percent >= 70) return '#34A853'; // Green
+    if (percent >= 40) return '#9ACD32'; // Slight Green-Yellow
+    if (percent >= 20) return '#FB8C00'; // Orange
+    return '#EA4335'; // Red
+  }
+
+  assert.strictEqual(getModelColor(100), '#34A853');
+  assert.strictEqual(getModelColor(83.4), '#34A853');
+  assert.strictEqual(getModelColor(70), '#34A853');
+  assert.strictEqual(getModelColor(69.9), '#9ACD32');
+  assert.strictEqual(getModelColor(55), '#9ACD32');
+  assert.strictEqual(getModelColor(40), '#9ACD32');
+  assert.strictEqual(getModelColor(39.9), '#FB8C00');
+  assert.strictEqual(getModelColor(25), '#FB8C00');
+  assert.strictEqual(getModelColor(20), '#FB8C00');
+  assert.strictEqual(getModelColor(19.9), '#EA4335');
+  assert.strictEqual(getModelColor(5), '#EA4335');
+
+  console.log('✅ 4-Tier Warning Color Scheme tests passed!');
 }
 
 function runAll() {
@@ -73,6 +99,7 @@ function runAll() {
   testPointToPointCalculations();
   testServerRefillTimeFormat();
   testCarbonThemeIcons();
+  test4TierWarningColors();
   console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY!');
 }
 

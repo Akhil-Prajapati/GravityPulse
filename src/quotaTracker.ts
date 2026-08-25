@@ -52,18 +52,17 @@ export class QuotaTracker {
     if (configured && configured.length > 0) {
       return configured;
     }
-    // Default to Gemini 3.7 Flash & Claude Sonnet
+    // Default to Gemini 3.6 Flash (Medium)
     const all = this.getModels();
-    const defaults: string[] = [];
-    const flash = all.find((m) => m.label.includes('3.7 Flash (High)') || m.label.includes('Flash (High)'));
-    if (flash) {
-      defaults.push(flash.label);
+    const flashMed = all.find(
+      (m) =>
+        m.label.includes('3.6 Flash (Medium)') ||
+        (m.label.includes('3.6') && m.label.includes('Medium'))
+    );
+    if (flashMed) {
+      return [flashMed.label];
     }
-    const claude = all.find((m) => m.label.includes('Claude Sonnet'));
-    if (claude) {
-      defaults.push(claude.label);
-    }
-    return defaults.length > 0 ? defaults : all.slice(0, 2).map((m) => m.label);
+    return all.length > 0 ? [all[0].label] : ['Gemini 3.6 Flash (Medium)'];
   }
 
   public async togglePinnedModel(label: string): Promise<void> {
@@ -97,14 +96,24 @@ export class QuotaTracker {
     return label.substring(0, 6);
   }
 
+  /**
+   * 4-Tier Color Scheme:
+   * >= 70%: Green (#34A853)
+   * 40% - 70%: Slight Green-Yellow (#9ACD32)
+   * 20% - 40%: Orange (#FB8C00)
+   * < 20%: Red (#EA4335)
+   */
   public getModelColor(percent: number): string {
-    if (percent <= this.config.criticalThreshold) {
-      return '#EA4335'; // Google Red
+    if (percent >= 70) {
+      return '#34A853'; // Green
     }
-    if (percent <= this.config.warningThreshold) {
-      return '#FBBC05'; // Google Yellow
+    if (percent >= 40) {
+      return '#9ACD32'; // Slight Green-Yellow (Yellow-Green)
     }
-    return '#34A853'; // Google Green
+    if (percent >= 20) {
+      return '#FB8C00'; // Orange
+    }
+    return '#EA4335'; // Red
   }
 
   public reloadConfig(): void {
@@ -118,8 +127,7 @@ export class QuotaTracker {
       displayStyle: wsConfig.get<DisplayStyle>('displayStyle', 'zap-percent'),
       precision: wsConfig.get<PrecisionMode>('precision', 'single-decimal'),
       pinnedModels: wsConfig.get<string[]>('pinnedModels', [
-        'Gemini 3.7 Flash (High)',
-        'Claude Sonnet 4.6 (Thinking)'
+        'Gemini 3.6 Flash (Medium)'
       ]),
       pollingIntervalSeconds: wsConfig.get<number>('pollingIntervalSeconds', 30),
       warningThreshold: wsConfig.get<number>('warningThreshold', 20),

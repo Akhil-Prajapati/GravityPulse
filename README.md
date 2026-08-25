@@ -1,20 +1,24 @@
 # ⚡ GravityPulse — Antigravity Multi-Model Quota (AGQ) Battery
 
 <p align="center">
-  <img src="assets/icon_512.png" width="140" height="140" alt="GravityPulse Logo" />
+  <img src="https://raw.githubusercontent.com/Akhil-Prajapati/GravityPulse/main/assets/icon_512.png" width="140" height="140" alt="GravityPulse Logo" />
 </p>
 
 <p align="center">
-  <strong>Real-time, multi-model battery status bar monitor for Google Antigravity IDE with exact point-to-point decimal precision, model pinning, dedicated hover cards, and Google color coding.</strong>
+  <strong>Real-time, multi-model battery status bar monitor for Google Antigravity IDE with exact point-to-point decimal precision, model pinning, dedicated hover cards, and 4-tier warning color coding.</strong>
 </p>
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.0-purple.svg?style=flat-square&logo=visualstudiocode" alt="Open VSX" /></a>
+  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.1-purple.svg?style=flat-square&logo=visualstudiocode" alt="Open VSX" /></a>
   <a href="https://github.com/Akhil-Prajapati/GravityPulse"><img src="https://img.shields.io/badge/GitHub-GravityPulse-181717.svg?style=flat-square&logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/precision-point--to--point-34A853.svg?style=flat-square" alt="Point to Point" />
   <img src="https://img.shields.io/badge/status-live%20IDE%20server-4285F4.svg?style=flat-square" alt="Live Server" />
   <img src="https://img.shields.io/badge/icons-Carbon%20Product%20Icons-FBBC05.svg?style=flat-square" alt="Carbon Icons" />
   <img src="https://img.shields.io/badge/license-MIT-EA4335.svg?style=flat-square" alt="License" />
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Akhil-Prajapati/GravityPulse/main/assets/preview.png" width="700" alt="GravityPulse Selection Screen Modal Preview" />
 </p>
 
 ---
@@ -28,17 +32,18 @@ Unlike traditional quota extensions that round remaining usage into 5% chunks or
 ## ✨ Features
 
 - ⚡ **100% Real Live Antigravity Connection**: Direct real-time connection to the local Antigravity Language Server (`GetUserStatus` endpoint) for genuine model quotas and prompt credit balances.
-- 🎯 **Point-to-Point Exact Precision (No 5% Gaps)**: Displays real fractional percentages (e.g. `89.5%`, `94.1%`, `100.0%`) point-by-point without rounded jump quantization.
+- 🎯 **Point-to-Point Exact Precision (No 5% Gaps)**: Displays real fractional percentages (e.g. `83.4%`, `89.5%`, `100.0%`) point-by-point without rounded jump quantization.
 - 📌 **Multi-Model Status Bar Pinning**: Select and display multiple models simultaneously in your status bar with instant checkmark toggles (`✓` / `○`):
   ```
-  $(zap) G3.7F: 89.5%   $(zap) Claude: 100.0%   $(zap) Opus: 100.0%
+  $(zap) G3.6F(M): 83.4%   $(zap) Claude: 100.0%   $(zap) Opus: 100.0%
   ```
 - 🔍 **Dedicated Single-Model Hover Cards**: Hovering over any model in the status bar displays **only** that specific model's quota card (clean, uncluttered, and instant).
-- 🎨 **Dynamic Google Color Palette**:
-  - 🟢 **Optimal (`>= 50%`)**: `#34A853` (Google Green)
-  - 🟡 **Warning (`20% - 50%`)**: `#FBBC05` (Google Yellow)
-  - 🔴 **Critical (`< 20%`)**: `#EA4335` (Google Red) with red alert highlight
-- 🔄 **Server Auto-Refill Countdown**: Displays the exact server-provided `resetTime` countdown (`Auto-refills in 4h 19m`).
+- 🎨 **4-Tier Warning Color Coding**:
+  - 🟢 **70%+**: `#34A853` (Google Green / Full Battery)
+  - 🟡 **40% - 70%**: `#9ACD32` (Slight Green-Yellow / Good)
+  - 🟠 **20% - 40%**: `#FB8C00` (Orange / Moderate Warning)
+  - 🔴 **Below 20%**: `#EA4335` (Google Red / Critical Alert)
+- 🔄 **Server Auto-Refill Countdown**: Displays the exact server-provided `resetTime` countdown (`Auto-refills in 3h 50m`).
 - 💎 **Carbon Product Icons Ready**: Native styling support for IBM Carbon Product Icons (`$(zap)`, `$(activity)`, `$(flame)`, `$(warning)`, `$(dashboard)`).
 - 💳 **Prompt Credits Balance**: Displays monthly overage credit pool (e.g. `500 / 50,000`).
 
@@ -50,11 +55,11 @@ Customize how your battery levels look in VS Code settings (`gravitypulse.displa
 
 | Style | Preview Example | Description |
 | :--- | :--- | :--- |
-| **Zap Percent** *(Default)* | `$(zap) G3.7F: 89.5%` | Carbon energy zap icon with model abbreviation & decimal percentage |
+| **Zap Percent** *(Default)* | `$(zap) G3.6F(M): 83.4%` | Carbon energy zap icon with model abbreviation & decimal percentage |
 | **Activity Percent** | `$(activity) Claude: 100.0%` | Carbon pulse activity wave icon |
-| **Battery Bar** | `$(zap) G3.7F [███████░] 89.5%` | Unicode segmented charge bar with percentage |
-| **Minimalist** | `89.5% $(zap)` | Clean text-first minimalist badge |
-| **Detailed** | `$(zap) G3.7F: 89.5% [███████░]` | Model label, decimal percentage, and full progress bar |
+| **Battery Bar** | `$(zap) G3.6F(M) [███████░] 83.4%` | Unicode segmented charge bar with percentage |
+| **Minimalist** | `83.4% $(zap)` | Clean text-first minimalist badge |
+| **Detailed** | `$(zap) G3.6F(M): 83.4% [███████░]` | Model label, decimal percentage, and full progress bar |
 
 ---
 
@@ -66,9 +71,9 @@ Click any status bar item or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>
 ⚡ GravityPulse — Antigravity Quota
 Click a model to toggle its visibility in the status bar
 
-✓ $(zap) Gemini 3.7 Flash (High)      ▓▓▓▓▓▓▓░░░ 89.5%    Auto-refills in 4h 19m
-✓ $(zap) Claude Sonnet 4.6 (Thinking) ▓▓▓▓▓▓▓▓▓▓ 100.0%   Auto-refills in 4h 58m
-○ $(zap) Gemini 3.1 Pro (High)        ▓▓▓▓▓▓▓░░░ 89.5%    Auto-refills in 4h 19m
+✓ $(zap) Gemini 3.6 Flash (Medium)    ▓▓▓▓▓▓▓░░░ 83.4%    Auto-refills in 3h 50m
+○ $(zap) Gemini 3.7 Flash (High)      ▓▓▓▓▓▓▓░░░ 83.4%    Auto-refills in 3h 50m
+○ $(zap) Claude Sonnet 4.6 (Thinking) ▓▓▓▓▓▓▓▓▓▓ 100.0%   Auto-refills in 4h 58m
 ○ $(zap) Claude Opus 4.6 (Thinking)   ▓▓▓▓▓▓▓▓▓▓ 100.0%   Auto-refills in 4h 58m
 ○ $(zap) GPT-OSS 120B (Medium)        ▓▓▓▓▓▓▓▓▓▓ 100.0%   Auto-refills in 4h 58m
 
@@ -85,23 +90,13 @@ $(settings-gear) Open Extension Settings
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `gravitypulse.pinnedModels` | `["Gemini 3.7 Flash (High)", "Claude Sonnet 4.6 (Thinking)"]` | Array of AI models to display simultaneously in the status bar. |
+| `gravitypulse.pinnedModels` | `["Gemini 3.6 Flash (Medium)"]` | Array of AI models to display simultaneously in the status bar (Defaults to Gemini 3.6 Flash Medium on install). |
 | `gravitypulse.displayStyle` | `"zap-percent"` | Display format (`zap-percent`, `activity-percent`, `battery-bar`, `minimal`, `detailed`). |
-| `gravitypulse.precision` | `"single-decimal"` | Percentage precision: `single-decimal` (`89.5%`) or `integer` (`90%`). |
+| `gravitypulse.precision` | `"single-decimal"` | Percentage precision: `single-decimal` (`83.4%`) or `integer` (`83%`). |
 | `gravitypulse.pollingIntervalSeconds` | `30` | Interval in seconds to query local Antigravity Language Server for latest quota. |
 | `gravitypulse.warningThreshold` | `20` | Battery percentage below which status bar turns Amber/Yellow. |
 | `gravitypulse.criticalThreshold` | `10` | Battery percentage below which status bar turns Red with warning alerts. |
 | `gravitypulse.showToastOnLowBattery` | `true` | Show a notification toast when a pinned model drops below critical levels. |
-
----
-
-## 🚀 Commands
-
-| Command | Identifier | Description |
-| :--- | :--- | :--- |
-| **Open Quota Dashboard** | `gravitypulse.showDashboard` | Opens the interactive model toggle and quota management menu. |
-| **Switch Model** | `gravitypulse.switchModel` | Quick command to toggle pinned models. |
-| **Refresh Live Quota** | `gravitypulse.syncAntigravityLogs` | Manually triggers an instant query to the Antigravity Language Server. |
 
 ---
 
@@ -115,7 +110,7 @@ $(settings-gear) Open Extension Settings
 ### Manual VSIX Installation:
 1. Download the latest `.vsix` from [Releases](https://github.com/Akhil-Prajapati/GravityPulse/releases).
 2. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → **`Extensions: Install from VSIX...`**.
-3. Select `gravity-pulse-1.0.0.vsix`.
+3. Select `gravity-pulse-1.0.1.vsix`.
 
 ---
 

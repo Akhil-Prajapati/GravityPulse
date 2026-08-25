@@ -2,7 +2,7 @@
   "name": "gravity-pulse",
   "displayName": "GravityPulse - Antigravity Quota (AGQ) Battery",
   "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, multi-model pinning, and live server tracking.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "akhilninja",
   "author": {
     "name": "Akhil Prajapati"
@@ -25,7 +25,7 @@
     "ai",
     "token monitor",
     "gemini",
-    "agq"
+    "claude"
   ],
   "engines": {
     "vscode": "^1.90.0"
@@ -62,8 +62,7 @@
             "type": "string"
           },
           "default": [
-            "Gemini 3.7 Flash (High)",
-            "Claude Sonnet 4.6 (Thinking)"
+            "Gemini 3.6 Flash (Medium)"
           ],
           "description": "List of AI models to display simultaneously in the status bar."
         },

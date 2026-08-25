@@ -129,14 +129,14 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     // Dedicated single-model hover card (only this model)
-    item.tooltip = this.buildSingleModelTooltip(model, config, formattedPercent, barVisual, themeIcon);
+    item.tooltip = this.buildSingleModelTooltip(model, formattedPercent, barVisual, themeIcon);
   }
 
   private getThemeIcon(percent: number): string {
-    if (percent <= this.quotaTracker.getConfig().criticalThreshold) {
+    if (percent < 20) {
       return '$(flame)';
     }
-    if (percent <= this.quotaTracker.getConfig().warningThreshold) {
+    if (percent < 40) {
       return '$(warning)';
     }
     return '$(zap)';
@@ -152,7 +152,6 @@ export class StatusBarManager implements vscode.Disposable {
 
   private buildSingleModelTooltip(
     model: ModelQuotaInfo,
-    config: QuotaConfig,
     formattedPercent: string,
     barVisual: string,
     themeIcon: string
@@ -161,11 +160,14 @@ export class StatusBarManager implements vscode.Disposable {
     md.isTrusted = true;
     md.supportThemeIcons = true;
 
+    const percent = model.remainingPercentage;
     let healthBadge = '🟢 Optimal';
-    if (model.remainingPercentage <= config.criticalThreshold) {
-      healthBadge = '🔴 Critical (Low Quota)';
-    } else if (model.remainingPercentage <= config.warningThreshold) {
-      healthBadge = '🟡 Warning (Low Quota)';
+    if (percent < 20) {
+      healthBadge = '🔴 Critical (< 20%)';
+    } else if (percent < 40) {
+      healthBadge = '🟠 Moderate Warning (20% - 40%)';
+    } else if (percent < 70) {
+      healthBadge = '🟡 Good (40% - 70%)';
     }
 
     md.appendMarkdown(`### ${themeIcon} **${model.label}**\n\n`);
