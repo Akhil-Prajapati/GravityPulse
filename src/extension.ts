@@ -9,8 +9,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const liveClient = new LiveQuotaClient();
   context.subscriptions.push(liveClient);
 
-  // 2. Initialize Quota Tracker connected to live client
-  const quotaTracker = new QuotaTracker(liveClient);
+  // 2. Initialize Quota Tracker connected to live client and persistent context
+  const quotaTracker = new QuotaTracker(liveClient, context);
 
   // 3. Initialize Status Bar Multi-Model Battery Display
   const statusBarManager = new StatusBarManager(quotaTracker);

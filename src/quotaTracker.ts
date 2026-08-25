@@ -7,7 +7,11 @@ export const MODEL_ABBREVIATIONS: Record<string, string> = {
   'Gemini 3.7 Flash (Medium)': 'G3.7F(M)',
   'Gemini 3.7 Flash (Low)': 'G3.7F(L)',
   'Gemini 3.6 Flash (High)': 'G3.6F',
+  'Gemini 3.6 Flash (Medium)': 'G3.6F(M)',
+  'Gemini 3.6 Flash (Low)': 'G3.6F(L)',
   'Gemini 3.5 Flash (High)': 'G3.5F',
+  'Gemini 3.5 Flash (Medium)': 'G3.5F(M)',
+  'Gemini 3.5 Flash (Low)': 'G3.5F(L)',
   'Gemini 3.1 Pro (High)': 'G3.1P',
   'Gemini 3.1 Pro (Low)': 'G3.1P(L)',
   'Claude Sonnet 4.6 (Thinking)': 'Claude',
@@ -25,7 +29,10 @@ export class QuotaTracker {
   private readonly _onLowBatteryWarning = new vscode.EventEmitter<{ level: number; model: string; critical: boolean }>();
   public readonly onLowBatteryWarning = this._onLowBatteryWarning.event;
 
-  constructor(private liveClient: LiveQuotaClient) {
+  constructor(
+    private liveClient: LiveQuotaClient,
+    private context: vscode.ExtensionContext
+  ) {
     this.config = this.loadConfig();
 
     this.liveClient.onDidChangeSnapshot((snapshot) => {
@@ -48,21 +55,10 @@ export class QuotaTracker {
   }
 
   public getPinnedModels(): string[] {
-    const configured = this.config.pinnedModels;
-    if (configured && configured.length > 0) {
-      return configured;
+    if (this.config.pinnedModels && this.config.pinnedModels.length > 0) {
+      return this.config.pinnedModels;
     }
-    // Default to Gemini 3.6 Flash (Medium)
-    const all = this.getModels();
-    const flashMed = all.find(
-      (m) =>
-        m.label.includes('3.6 Flash (Medium)') ||
-        (m.label.includes('3.6') && m.label.includes('Medium'))
-    );
-    if (flashMed) {
-      return [flashMed.label];
-    }
-    return all.length > 0 ? [all[0].label] : ['Gemini 3.6 Flash (Medium)'];
+    return ['Gemini 3.6 Flash (Medium)'];
   }
 
   public async togglePinnedModel(label: string): Promise<void> {
@@ -74,10 +70,20 @@ export class QuotaTracker {
       current.push(label);
     }
     this.config.pinnedModels = current;
-    await vscode.workspace
-      .getConfiguration('gravitypulse')
-      .update('pinnedModels', current, vscode.ConfigurationTarget.Global);
-    this.reloadConfig();
+
+    // Persist permanently in ExtensionContext globalState Memento
+    await this.context.globalState.update('gravitypulse.pinnedModels', current);
+
+    // Also persist in global configuration
+    try {
+      await vscode.workspace
+        .getConfiguration('gravitypulse')
+        .update('pinnedModels', current, vscode.ConfigurationTarget.Global);
+    } catch {
+      // Ignore if configuration update is delayed
+    }
+
+    this._onDidChangeQuotaState.fire();
   }
 
   public getModelAbbreviation(label: string): string {
@@ -108,7 +114,7 @@ export class QuotaTracker {
       return '#34A853'; // Green
     }
     if (percent >= 40) {
-      return '#9ACD32'; // Slight Green-Yellow (Yellow-Green)
+      return '#9ACD32'; // Slight Green-Yellow
     }
     if (percent >= 20) {
       return '#FB8C00'; // Orange
@@ -123,12 +129,23 @@ export class QuotaTracker {
 
   private loadConfig(): QuotaConfig {
     const wsConfig = vscode.workspace.getConfiguration('gravitypulse');
+    const savedPinned = this.context.globalState.get<string[]>('gravitypulse.pinnedModels');
+    const configPinned = wsConfig.get<string[]>('pinnedModels');
+
+    // Priority: 1. Saved globalState -> 2. Config -> 3. Default ['Gemini 3.6 Flash (Medium)']
+    let pinned: string[];
+    if (savedPinned && Array.isArray(savedPinned) && savedPinned.length > 0) {
+      pinned = savedPinned;
+    } else if (configPinned && Array.isArray(configPinned) && configPinned.length > 0) {
+      pinned = configPinned;
+    } else {
+      pinned = ['Gemini 3.6 Flash (Medium)'];
+    }
+
     return {
       displayStyle: wsConfig.get<DisplayStyle>('displayStyle', 'zap-percent'),
       precision: wsConfig.get<PrecisionMode>('precision', 'single-decimal'),
-      pinnedModels: wsConfig.get<string[]>('pinnedModels', [
-        'Gemini 3.6 Flash (Medium)'
-      ]),
+      pinnedModels: pinned,
       pollingIntervalSeconds: wsConfig.get<number>('pollingIntervalSeconds', 30),
       warningThreshold: wsConfig.get<number>('warningThreshold', 20),
       criticalThreshold: wsConfig.get<number>('criticalThreshold', 10),

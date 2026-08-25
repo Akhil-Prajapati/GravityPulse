@@ -1,15 +1,9 @@
 # ⚡ GravityPulse — Antigravity Multi-Model Quota (AGQ) Battery
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Akhil-Prajapati/GravityPulse/main/assets/icon_512.png" width="140" height="140" alt="GravityPulse Logo" />
-</p>
+> 🔋 **Real-time, multi-model battery status bar monitor for Google Antigravity IDE with exact point-to-point decimal precision, model pinning, dedicated hover cards, and 4-tier warning color coding.**
 
 <p align="center">
-  <strong>Real-time, multi-model battery status bar monitor for Google Antigravity IDE with exact point-to-point decimal precision, model pinning, dedicated hover cards, and 4-tier warning color coding.</strong>
-</p>
-
-<p align="center">
-  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.1-purple.svg?style=flat-square&logo=visualstudiocode" alt="Open VSX" /></a>
+  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.2-purple.svg?style=flat-square&logo=visualstudiocode" alt="Open VSX" /></a>
   <a href="https://github.com/Akhil-Prajapati/GravityPulse"><img src="https://img.shields.io/badge/GitHub-GravityPulse-181717.svg?style=flat-square&logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/precision-point--to--point-34A853.svg?style=flat-square" alt="Point to Point" />
   <img src="https://img.shields.io/badge/status-live%20IDE%20server-4285F4.svg?style=flat-square" alt="Live Server" />
@@ -17,15 +11,18 @@
   <img src="https://img.shields.io/badge/license-MIT-EA4335.svg?style=flat-square" alt="License" />
 </p>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Akhil-Prajapati/GravityPulse/main/assets/preview.png" width="700" alt="GravityPulse Selection Screen Modal Preview" />
-</p>
+```
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  ⚡ GravityPulse Battery Status                                         │
+  │  [ 🟢 70%+ Optimal ]  [ 🟡 40-70% Good ]  [ 🟠 20-40% Warning ]  [ 🔴 <20% Critical ]  │
+  └────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## 🌟 Highlights
 
-Unlike traditional quota extensions that round remaining usage into 5% chunks or use artificial mock tokens, **GravityPulse** connects directly to your local running **Antigravity Language Server** to give you 100% genuine server quota, exact point-to-point decimal tracking, multi-model status bar pinning, and server-side auto-refill countdowns.
+Unlike traditional quota extensions that round remaining usage into 5% chunks or use artificial mock tokens, **GravityPulse** connects directly to your local running **Antigravity Language Server** to give you 100% genuine server quota, exact point-to-point decimal tracking, persistent multi-model status bar pinning, and server-side auto-refill countdowns.
 
 ---
 
@@ -37,6 +34,7 @@ Unlike traditional quota extensions that round remaining usage into 5% chunks or
   ```
   $(zap) G3.6F(M): 83.4%   $(zap) Claude: 100.0%   $(zap) Opus: 100.0%
   ```
+- 💾 **Permanent Preference Persistence**: Selected models and display options are saved permanently in VS Code storage and never reset on window reloads.
 - 🔍 **Dedicated Single-Model Hover Cards**: Hovering over any model in the status bar displays **only** that specific model's quota card (clean, uncluttered, and instant).
 - 🎨 **4-Tier Warning Color Coding**:
   - 🟢 **70%+**: `#34A853` (Google Green / Full Battery)
@@ -100,6 +98,16 @@ $(settings-gear) Open Extension Settings
 
 ---
 
+## 🚀 Commands
+
+| Command | Identifier | Description |
+| :--- | :--- | :--- |
+| **Open Quota Dashboard** | `gravitypulse.showDashboard` | Opens the interactive model toggle and quota management menu. |
+| **Switch Model** | `gravitypulse.switchModel` | Quick command to toggle pinned models. |
+| **Refresh Live Quota** | `gravitypulse.syncAntigravityLogs` | Manually triggers an instant query to the Antigravity Language Server. |
+
+---
+
 ## 📥 Installation
 
 ### From Open VSX Registry (Antigravity IDE / VSCodium):
@@ -110,7 +118,7 @@ $(settings-gear) Open Extension Settings
 ### Manual VSIX Installation:
 1. Download the latest `.vsix` from [Releases](https://github.com/Akhil-Prajapati/GravityPulse/releases).
 2. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → **`Extensions: Install from VSIX...`**.
-3. Select `gravity-pulse-1.0.1.vsix`.
+3. Select `gravity-pulse-1.0.2.vsix`.
 
 ---
 
