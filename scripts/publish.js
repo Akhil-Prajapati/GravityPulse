@@ -40,10 +40,17 @@ async function publish() {
   console.log(`📦 File: ${vsixFile}`);
 
   try {
-    await ovsx.publish({
-      packagePath: vsixFile,
+    const results = await ovsx.publish({
+      packagePath: [vsixFile],
       pat: token
     });
+
+    const hasError = results.some((r) => r.status === 'rejected');
+    if (hasError) {
+      console.error('❌ Errors occurred during publishing:', results);
+      process.exit(1);
+    }
+
     console.log(`\n🎉 Successfully published ${pkg.publisher}.${pkg.name} v${pkg.version} to Open VSX!`);
     console.log(`🔗 Link: https://open-vsx.org/extension/${pkg.publisher}/${pkg.name}`);
   } catch (err) {

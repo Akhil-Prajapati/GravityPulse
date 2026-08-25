@@ -1,8 +1,12 @@
 .vscode/**
 .vscode-test/**
 src/**
+test/**
+scripts/**
 .gitignore
 .vscodeignore
 tsconfig.json
 **/*.map
 *.log
+.env
+*.env
