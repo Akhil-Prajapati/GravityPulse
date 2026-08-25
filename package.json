@@ -115,6 +115,7 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "test": "node test/quotaTracker.test.js",
     "lint": "eslint src --ext ts",
     "package": "node scripts/package.js"
   },
