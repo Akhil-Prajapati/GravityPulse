@@ -2,7 +2,7 @@
   "name": "gravity-pulse",
   "displayName": "GravityPulse - Antigravity Quota (AGQ) Battery",
   "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, burn-rate pace estimation, trend sparklines, multi-model pinning, and live server tracking.",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "publisher": "akhilninja",
   "author": {
     "name": "Akhil Prajapati"
@@ -143,6 +143,11 @@
           "type": "number",
           "default": 3,
           "description": "Available prompt credits percentage threshold below which a Severe tier alert is triggered."
+        },
+        "gravitypulse.showToastOnLowCredits": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show notification alert toasts when available prompt credits drop below threshold (disabled by default to avoid alert spam)."
         },
         "gravitypulse.showToastOnLowBattery": {
           "type": "boolean",

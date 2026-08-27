@@ -92,7 +92,13 @@ export class QuotaTracker {
 
       if (this.config.showToastOnLowBattery) {
         for (const alert of alerts) {
-          this._onQuotaAlert.fire(alert);
+          if (alert.type === 'credits') {
+            if (this.config.showToastOnLowCredits) {
+              this._onQuotaAlert.fire(alert);
+            }
+          } else {
+            this._onQuotaAlert.fire(alert);
+          }
         }
       }
     } catch (err) {
@@ -286,7 +292,8 @@ export class QuotaTracker {
       burnRateSampleCount: wsConfig.get<number>('burnRateSampleCount', 5),
       creditsInfoThreshold: wsConfig.get<number>('creditsInfoThreshold', 25),
       creditsCriticalThreshold: wsConfig.get<number>('creditsCriticalThreshold', 10),
-      creditsSevereThreshold: wsConfig.get<number>('creditsSevereThreshold', 3)
+      creditsSevereThreshold: wsConfig.get<number>('creditsSevereThreshold', 3),
+      showToastOnLowCredits: wsConfig.get<boolean>('showToastOnLowCredits', false)
     };
   }
 

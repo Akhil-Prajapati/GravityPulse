@@ -45,6 +45,7 @@ export interface QuotaConfig {
   creditsInfoThreshold: number;
   creditsCriticalThreshold: number;
   creditsSevereThreshold: number;
+  showToastOnLowCredits: boolean;
 }
 
 export type AlertTier = 'info' | 'critical' | 'severe';
