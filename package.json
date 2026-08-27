@@ -2,7 +2,7 @@
   "name": "gravity-pulse",
   "displayName": "GravityPulse - Antigravity Quota (AGQ) Battery",
   "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, burn-rate pace estimation, trend sparklines, multi-model pinning, and live server tracking.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "publisher": "akhilninja",
   "author": {
     "name": "Akhil Prajapati"
