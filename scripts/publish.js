@@ -12,16 +12,17 @@ const path = require('path');
 const fs = require('fs');
 
 async function publish() {
+  let fileToken = '';
   const envPath = path.join(__dirname, '..', '.env');
   if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, 'utf8');
     const match = envContent.match(/OVSX_PAT\s*=\s*["']?([^"'\r\n]+)["']?/);
-    if (match && !process.env.OVSX_PAT) {
-      process.env.OVSX_PAT = match[1];
+    if (match) {
+      fileToken = match[1].trim();
     }
   }
 
-  const token = process.argv[2] || process.env.OVSX_PAT;
+  const token = process.argv[2] || fileToken || process.env.OVSX_PAT;
   if (!token) {
     console.error('❌ Usage: node scripts/publish.js <OPEN_VSX_TOKEN>');
     console.error('   Or set OVSX_PAT in your .env file or environment variables.');
