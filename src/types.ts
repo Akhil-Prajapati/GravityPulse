@@ -38,4 +38,45 @@ export interface QuotaConfig {
   warningThreshold: number;
   criticalThreshold: number;
   showToastOnLowBattery: boolean;
+  infoThreshold: number;
+  severeThreshold: number;
+  globalAlertCooldownMinutes: number;
+  burnRateSampleCount: number;
+  creditsInfoThreshold: number;
+  creditsCriticalThreshold: number;
+  creditsSevereThreshold: number;
+}
+
+export type AlertTier = 'info' | 'critical' | 'severe';
+
+export interface QuotaAlertEvent {
+  type: 'model' | 'credits';
+  tier: AlertTier;
+  threshold: number;
+  currentPercentage: number;
+  modelLabel?: string;
+  modelId?: string;
+  availableCredits?: number;
+  monthlyCredits?: number;
+}
+
+export interface PollHistoryPoint {
+  timestamp: number;
+  percentage: number;
+}
+
+export interface BurnRateEstimate {
+  ratePercentPerMinute: number;
+  minutesToEmpty: number | null;
+  formattedEta: string | null;
+}
+
+export type TrendDirection = 'declining' | 'rising' | 'stable' | 'gathering';
+
+export interface ModelTrendInfo {
+  sparkline: string;
+  direction: TrendDirection;
+  label: string;
+  formatted: string;
+  pointsCount: number;
 }

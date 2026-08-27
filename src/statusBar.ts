@@ -174,8 +174,27 @@ export class StatusBarManager implements vscode.Disposable {
     md.appendMarkdown(`**Battery Level:** \`${formattedPercent}\` &nbsp; \`${barVisual}\` &nbsp; **${healthBadge}**\n\n`);
     md.appendMarkdown(`---\n\n`);
     md.appendMarkdown(`- 🔄 **Auto-Refill Schedule:** ${model.timeUntilResetFormatted}\n`);
-    md.appendMarkdown(`- 🔋 **Remaining Capacity:** \`${(model.remainingFraction * 100).toFixed(2)}%\`\n\n`);
-    md.appendMarkdown(`---\n\n`);
+    md.appendMarkdown(`- 🔋 **Remaining Capacity:** \`${(model.remainingFraction * 100).toFixed(2)}%\`\n`);
+
+    try {
+      const burnEstimate = this.quotaTracker.getBurnRateEstimate(model.label);
+      if (burnEstimate?.formattedEta) {
+        md.appendMarkdown(`- ⏳ **Estimated Pace:** \`${burnEstimate.formattedEta}\`\n`);
+      }
+
+      const trend = this.quotaTracker.getModelTrend(model.label);
+      if (trend) {
+        if (trend.direction === 'gathering') {
+          md.appendMarkdown(`- 📈 **Recent Trend:** \`—\` *(gathering data)*\n`);
+        } else {
+          md.appendMarkdown(`- 📈 **Recent Trend:** \`${trend.sparkline}\` (${trend.direction}) *(Quota usage over last ${trend.pointsCount} polls)*\n`);
+        }
+      }
+    } catch {
+      // Passive features fail silently
+    }
+
+    md.appendMarkdown(`\n---\n\n`);
     md.appendMarkdown(`[$(paintcan) Select Models](command:gravitypulse.showDashboard) &nbsp;|&nbsp; [$(sync) Refresh](command:gravitypulse.syncAntigravityLogs)\n`);
 
     return md;

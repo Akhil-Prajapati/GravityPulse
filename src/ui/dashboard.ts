@@ -52,24 +52,46 @@ export class DashboardManager {
         const bar = isConnected ? this.drawProgressBar(m.remainingPercentage) : '[----------]';
         const pct = isConnected ? `${m.remainingPercentage.toFixed(1)}%` : 'Ready';
 
+        let trendSuffix = '';
+        let burnEta = '';
+        if (isConnected) {
+          try {
+            const trend = this.quotaTracker.getModelTrend(m.label);
+            if (trend.direction === 'gathering') {
+              trendSuffix = '  — (gathering data)';
+            } else {
+              trendSuffix = `  ${trend.sparkline} (${trend.direction})`;
+            }
+            const est = this.quotaTracker.getBurnRateEstimate(m.label);
+            if (est?.formattedEta) {
+              burnEta = ` • ${est.formattedEta}`;
+            }
+          } catch {
+            // Fail silently
+          }
+        }
+
         items.push({
           label: `${checkIcon}${statusIcon}${m.label}`,
-          description: `${bar} ${pct}`,
-          detail: isConnected ? `   Auto-refill: ${m.timeUntilResetFormatted}` : '   Will show exact battery once server connects',
+          description: `${bar} ${pct}${trendSuffix}`,
+          detail: isConnected
+            ? `   Auto-refill: ${m.timeUntilResetFormatted}${burnEta}`
+            : '   Will show exact battery once server connects',
           modelLabel: m.label
         });
       }
 
       if (snapshot?.promptCredits) {
         const pc = snapshot.promptCredits;
+        const creditsBar = this.drawProgressBar(pc.remainingPercentage);
         items.push({
           kind: vscode.QuickPickItemKind.Separator,
           label: 'Prompt Credits'
         });
         items.push({
           label: `$(credit-card) Available Credits: ${pc.available.toLocaleString()} / ${pc.monthly.toLocaleString()}`,
-          description: `${pc.remainingPercentage.toFixed(1)}% remaining`,
-          detail: 'Monthly prompt credit balance'
+          description: `${creditsBar} ${pc.remainingPercentage.toFixed(1)}% remaining`,
+          detail: '   Monthly prompt credit overage pool balance'
         });
       }
 

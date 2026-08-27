@@ -1,8 +1,8 @@
 {
   "name": "gravity-pulse",
   "displayName": "GravityPulse - Antigravity Quota (AGQ) Battery",
-  "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, multi-model pinning, and live server tracking.",
-  "version": "1.0.4",
+  "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, burn-rate pace estimation, trend sparklines, multi-model pinning, and live server tracking.",
+  "version": "1.0.5",
   "publisher": "akhilninja",
   "author": {
     "name": "Akhil Prajapati"
@@ -25,7 +25,14 @@
     "ai",
     "token monitor",
     "gemini",
-    "claude"
+    "claude",
+    "burn rate",
+    "sparkline",
+    "rate limit",
+    "prompt credits",
+    "antigravity quota",
+    "ai battery",
+    "gemini 3.7"
   ],
   "engines": {
     "vscode": "^1.90.0"
@@ -101,6 +108,41 @@
           "type": "number",
           "default": 10,
           "description": "Battery percentage threshold below which the status bar turns Red with Low-Battery warning."
+        },
+        "gravitypulse.infoThreshold": {
+          "type": "number",
+          "default": 20,
+          "description": "Battery percentage threshold below which an informational low-quota alert is triggered (Info tier)."
+        },
+        "gravitypulse.severeThreshold": {
+          "type": "number",
+          "default": 5,
+          "description": "Battery percentage threshold below which a severe low-quota alert is triggered (Severe tier)."
+        },
+        "gravitypulse.globalAlertCooldownMinutes": {
+          "type": "number",
+          "default": 2,
+          "description": "Global cooldown in minutes between low-quota and credits toast notifications across all sources."
+        },
+        "gravitypulse.burnRateSampleCount": {
+          "type": "number",
+          "default": 5,
+          "description": "Number of rolling quota polling samples to maintain for burn-rate and time-to-empty calculations."
+        },
+        "gravitypulse.creditsInfoThreshold": {
+          "type": "number",
+          "default": 25,
+          "description": "Available prompt credits percentage threshold below which an Info tier alert is triggered."
+        },
+        "gravitypulse.creditsCriticalThreshold": {
+          "type": "number",
+          "default": 10,
+          "description": "Available prompt credits percentage threshold below which a Critical tier alert is triggered."
+        },
+        "gravitypulse.creditsSevereThreshold": {
+          "type": "number",
+          "default": 3,
+          "description": "Available prompt credits percentage threshold below which a Severe tier alert is triggered."
         },
         "gravitypulse.showToastOnLowBattery": {
           "type": "boolean",

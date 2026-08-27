@@ -48,30 +48,45 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   context.subscriptions.push(configListener);
 
-  // 7. Handle Low Battery Warnings
-  const lowBatteryListener = quotaTracker.onLowBatteryWarning(({ level, model, critical }) => {
-    const formatted = `${level.toFixed(1)}%`;
-    if (critical) {
-      vscode.window.showErrorMessage(
-        `GravityPulse: Critical Quota Alert! ${model} is at ${formatted}.`,
-        'Manage Models'
-      ).then((selection) => {
-        if (selection === 'Manage Models') {
-          dashboardManager.showDashboard();
-        }
-      });
-    } else {
-      vscode.window.showWarningMessage(
-        `GravityPulse: Low Quota Warning! ${model} is at ${formatted}.`,
-        'Manage Models'
-      ).then((selection) => {
-        if (selection === 'Manage Models') {
-          dashboardManager.showDashboard();
-        }
-      });
+  // 7. Handle Multi-Tier Quota & Credits Alerts (Anti-Spam, Non-Modal)
+  const quotaAlertListener = quotaTracker.onQuotaAlert((event) => {
+    try {
+      if (event.type === 'credits') {
+        const formatted = `${event.currentPercentage.toFixed(1)}%`;
+        const tierName = event.tier.charAt(0).toUpperCase() + event.tier.slice(1);
+        const creditsDetail =
+          event.availableCredits !== undefined && event.monthlyCredits !== undefined
+            ? ` (${event.availableCredits.toLocaleString()} / ${event.monthlyCredits.toLocaleString()} available)`
+            : '';
+        vscode.window
+          .showWarningMessage(
+            `GravityPulse: Available Credits are low [${tierName} Alert] at ${formatted}${creditsDetail}.`,
+            'Manage Models'
+          )
+          .then((selection) => {
+            if (selection === 'Manage Models') {
+              dashboardManager.showDashboard();
+            }
+          });
+      } else {
+        const formatted = `${event.currentPercentage.toFixed(1)}%`;
+        const tierName = event.tier.charAt(0).toUpperCase() + event.tier.slice(1);
+        vscode.window
+          .showWarningMessage(
+            `GravityPulse: ${event.modelLabel || 'Model'} quota is low [${tierName} Alert] at ${formatted}.`,
+            'Manage Models'
+          )
+          .then((selection) => {
+            if (selection === 'Manage Models') {
+              dashboardManager.showDashboard();
+            }
+          });
+      }
+    } catch (err) {
+      console.error('GravityPulse: Error displaying alert notification:', err);
     }
   });
-  context.subscriptions.push(lowBatteryListener);
+  context.subscriptions.push(quotaAlertListener);
 }
 
 export function deactivate(): void {

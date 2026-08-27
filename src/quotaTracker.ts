@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
-import { QuotaConfig, DisplayStyle, PrecisionMode, LiveQuotaSnapshot, ModelQuotaInfo } from './types';
+import { QuotaConfig, DisplayStyle, PrecisionMode, LiveQuotaSnapshot, ModelQuotaInfo, QuotaAlertEvent, BurnRateEstimate, ModelTrendInfo } from './types';
 import { LiveQuotaClient } from './liveQuotaClient';
+import { AlertManager } from './alertManager';
+import { BurnRateTracker } from './burnRateTracker';
+import { HistoryTracker } from './historyTracker';
 
 export const MODEL_ABBREVIATIONS: Record<string, string> = {
   'Gemini 3.7 Flash (High)': 'G3.7F',
@@ -29,17 +32,117 @@ export class QuotaTracker {
   private readonly _onLowBatteryWarning = new vscode.EventEmitter<{ level: number; model: string; critical: boolean }>();
   public readonly onLowBatteryWarning = this._onLowBatteryWarning.event;
 
+  private readonly _onQuotaAlert = new vscode.EventEmitter<QuotaAlertEvent>();
+  public readonly onQuotaAlert = this._onQuotaAlert.event;
+
+  private alertManager: AlertManager;
+  private burnRateTracker: BurnRateTracker;
+  private historyTracker: HistoryTracker;
+
   constructor(
     private liveClient: LiveQuotaClient,
     private context: vscode.ExtensionContext
   ) {
+    this.alertManager = new AlertManager();
+    this.burnRateTracker = new BurnRateTracker();
+    this.historyTracker = new HistoryTracker(this.context);
+
     this.config = this.loadConfig();
 
     this.liveClient.onDidChangeSnapshot((snapshot) => {
       this.latestSnapshot = snapshot;
+      this.processNewSnapshot(snapshot);
       this.checkThresholds();
       this._onDidChangeQuotaState.fire();
     });
+  }
+
+  private processNewSnapshot(snapshot: LiveQuotaSnapshot): void {
+    const now = Date.now();
+
+    // 1. Record burn rate & history per model
+    if (snapshot.models && Array.isArray(snapshot.models)) {
+      for (const m of snapshot.models) {
+        try {
+          this.burnRateTracker.recordSample(
+            m.label,
+            m.remainingPercentage,
+            now,
+            this.config.burnRateSampleCount
+          );
+          this.historyTracker.recordPoint(m.label, m.remainingPercentage, now);
+        } catch (err) {
+          console.error(`GravityPulse: Error recording metrics for ${m.label}:`, err);
+        }
+      }
+      this.historyTracker.persistHistory().catch((err) => {
+        console.error('GravityPulse: Error persisting history:', err);
+      });
+    }
+
+    // 2. Process multi-tier & credits alerts
+    try {
+      const alerts = this.alertManager.processSnapshot(
+        snapshot.models,
+        this.getPinnedModels(),
+        snapshot.promptCredits,
+        this.config,
+        now
+      );
+
+      if (this.config.showToastOnLowBattery) {
+        for (const alert of alerts) {
+          this._onQuotaAlert.fire(alert);
+        }
+      }
+    } catch (err) {
+      console.error('GravityPulse: Error processing alerts from snapshot:', err);
+    }
+  }
+
+  public getAlertManager(): AlertManager {
+    return this.alertManager;
+  }
+
+  public getBurnRateTracker(): BurnRateTracker {
+    return this.burnRateTracker;
+  }
+
+  public getHistoryTracker(): HistoryTracker {
+    return this.historyTracker;
+  }
+
+  public getBurnRateEstimate(modelLabel: string): BurnRateEstimate | null {
+    try {
+      return this.burnRateTracker.computeEstimate(modelLabel);
+    } catch (err) {
+      console.error(`GravityPulse: Error getting burn rate estimate for ${modelLabel}:`, err);
+      return null;
+    }
+  }
+
+  public getModelSparkline(modelLabel: string, length: number = 8): string {
+    try {
+      return this.historyTracker.getSparkline(modelLabel, length);
+    } catch (err) {
+      console.error(`GravityPulse: Error getting sparkline for ${modelLabel}:`, err);
+      return '';
+    }
+  }
+
+  public getModelTrend(modelLabel: string, length: number = 8): ModelTrendInfo {
+    try {
+      return this.historyTracker.getTrendInfo(modelLabel, length);
+    } catch (err) {
+      console.error(`GravityPulse: Error getting trend info for ${modelLabel}:`, err);
+      return {
+        sparkline: '—',
+        direction: 'gathering',
+        label: '(gathering data)',
+        formatted: '— (gathering data)',
+        pointsCount: 0
+      };
+    }
   }
 
   public getConfig(): QuotaConfig {
@@ -176,7 +279,14 @@ export class QuotaTracker {
       pollingIntervalSeconds: wsConfig.get<number>('pollingIntervalSeconds', 30),
       warningThreshold: wsConfig.get<number>('warningThreshold', 20),
       criticalThreshold: wsConfig.get<number>('criticalThreshold', 10),
-      showToastOnLowBattery: wsConfig.get<boolean>('showToastOnLowBattery', true)
+      showToastOnLowBattery: wsConfig.get<boolean>('showToastOnLowBattery', true),
+      infoThreshold: wsConfig.get<number>('infoThreshold', 20),
+      severeThreshold: wsConfig.get<number>('severeThreshold', 5),
+      globalAlertCooldownMinutes: wsConfig.get<number>('globalAlertCooldownMinutes', 2),
+      burnRateSampleCount: wsConfig.get<number>('burnRateSampleCount', 5),
+      creditsInfoThreshold: wsConfig.get<number>('creditsInfoThreshold', 25),
+      creditsCriticalThreshold: wsConfig.get<number>('creditsCriticalThreshold', 10),
+      creditsSevereThreshold: wsConfig.get<number>('creditsSevereThreshold', 3)
     };
   }
 
@@ -197,3 +307,4 @@ export class QuotaTracker {
     }
   }
 }
+
