@@ -175,9 +175,65 @@ All settings can be customized in VS Code Settings (<kbd>Ctrl</kbd>+<kbd>,</kbd>
 
 ---
 
+## 🎭 The "We've All Been There" Scenarios
+
+<div align="center">
+  <table>
+    <tr>
+      <td>
+        <h3>🌙 1. The 2:00 AM Agent Marathon</h3>
+        <p>You’re 95% done generating a complete full-stack refactor with Antigravity AI agent. You fire one last prompt... and BAM: <strong>429 Throttled</strong>. The momentum is ruined. With GravityPulse, the <em>burn-rate pace estimator</em> alerts you beforehand so you can switch models without losing your flow.</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <h3>🏎️ 2. The F1 Pit-Crew Model Tag-Team</h3>
+        <p>Why stick to one model? Pin <strong>Gemini 3.7 Flash</strong>, <strong>Claude Sonnet 4.6</strong>, and <strong>GPT-OSS</strong> side-by-side. When Gemini's battery dips below 20%, seamlessly switch to Claude with zero downtime.</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <h3>🔋 3. Phone-Style Battery Peace of Mind</h3>
+        <p>You wouldn't leave home with 4% phone battery without a charger. Don't start massive agentic coding tasks without knowing your token charge. One glance at your status bar gives you total confidence.</p>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 💡 Pro-Gamer Power User Tips
+
+- **⚡ Tip 1: The Triple-Cockpit Setup**  
+  Pin 1 Ultra-Fast Model (`Gemini 3.7 Flash`) + 1 Deep Reasoning Model (`Claude Sonnet 4.6 Thinking`) + `Prompt Credits`. You'll always know your exact capacity at every tier.
+- **⏳ Tip 2: The Coffee-Break Pace Indicator**  
+  If the hover card says `~15m until empty at current pace`, check the `Auto-Refill Schedule`. If it refills in 10 minutes, grab a quick coffee and come back to a 100% full tank!
+- **🎨 Tip 3: Aesthetic Customization**  
+  Prefer a distraction-free IDE? Switch to **`Minimalist`** (`94.1% ⚡`). Love retro cyberpunk terminal vibes? Switch to **`Battery Bar`** (`⚡ G3.7F [███████░] 94.1%`).
+
+---
+
+## 📊 Visual Battery Gauge Cheatsheet
+
+```text
+[████████] 100%  🟢  MAX CHARGE       — Full speed ahead, fire heavy agent tasks!
+[██████░░]  75%  🟢  HEALTHY LEVEL    — Cruising smoothly with plenty of headroom.
+[████░░░░]  50%  🟡  HALF TANK        — Standard workload, monitor active burns.
+[██░░░░░░]  25%  🟠  MODERATE WARNING — Pace prompts, check auto-refill schedule.
+[█░░░░░░░]  10%  🔴  CRITICAL ALERT   — Switch models or switch to lightweight tasks!
+[░░░░░░░░]   0%  🔥  EXHAUSTED        — Auto-refill timer countdown active.
+```
+
+---
+
 ## ⭐ Enjoying GravityPulse?
 
-If GravityPulse has saved you from hitting unexpected rate limits, please leave a ⭐ **5-star review** on Open VSX and star our [GitHub Repository](https://github.com/Akhil-Prajapati/GravityPulse)!
+If GravityPulse has saved you from hitting unexpected rate limits and saved your flow-state, please leave a ⭐ **5-star review** on [Open VSX](https://open-vsx.org/extension/akhilninja/gravity-pulse) and star our [GitHub Repository](https://github.com/Akhil-Prajapati/GravityPulse)!
+
+---
+
+## 🏷️ Search Tags & Keywords
+`antigravity quota` • `google antigravity` • `gemini 3.7 flash` • `gemini 3.6 flash` • `gemini 3.5 flash` • `claude 3.7 sonnet` • `claude sonnet 4.6` • `claude opus` • `gpt-oss` • `ai battery` • `token monitor` • `burn rate` • `rate limit monitor` • `sparkline trend` • `ai developer tools` • `prompt credits` • `vscodium` • `antigravity ide` • `realtime quota battery`
 
 ## 📄 License
 

@@ -32,7 +32,15 @@
     "prompt credits",
     "antigravity quota",
     "ai battery",
-    "gemini 3.7"
+    "gemini 3.7",
+    "gemini 3.6",
+    "gemini 3.5",
+    "claude 3.7 sonnet",
+    "llm usage",
+    "token tracker",
+    "quota monitor",
+    "developer tools",
+    "flow state"
   ],
   "engines": {
     "vscode": "^1.90.0"
