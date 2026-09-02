@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.7-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
+  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.8-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
   <a href="https://github.com/Akhil-Prajapati/GravityPulse"><img src="https://img.shields.io/badge/GitHub-GravityPulse-181717?style=for-the-badge&logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/precision-point--to--point-blue?style=for-the-badge" alt="Precision" />
   <img src="https://img.shields.io/badge/status-live%20IDE%20server-brightgreen?style=for-the-badge" alt="Status" />
@@ -83,6 +83,12 @@ Have you ever been in the middle of a complex refactor or architectural design w
 ### 6. 📌 Multi-Model Status Bar Pinning
 - Pin multiple models simultaneously in your status bar with quick checkmark toggles.
 - Individual hover cards for each pinned model with deep quota analytics, refill schedules, burn rate, and sparklines.
+
+### 7. 📅 Group Weekly Limit & Days-Based Refill Countdowns
+- Concurrently queries `/RetrieveUserQuotaSummary` to track shared weekly limits across Gemini, Claude, and GPT model groups.
+- Displays human-friendly countdowns in days and hours (e.g., **`6d 2h`** instead of confusing raw hours like `146hr left`).
+- Renders **Weekly Limit** directly under Remaining Capacity in hover cards and provides visual gauges in the dashboard.
+- Protects against false 100% readings when quota is depleted.
 
 ---
 

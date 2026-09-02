@@ -105,8 +105,15 @@ export class BurnRateTracker {
     if (minutes < 60) {
       return `~${minutes}m until empty at current pace`;
     }
-    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(minutes / (24 * 60));
+    const hours = Math.floor((minutes % (24 * 60)) / 60);
     const remainingMins = minutes % 60;
+
+    if (days > 0) {
+      return hours > 0
+        ? `~${days}d ${hours}h until empty at current pace`
+        : `~${days}d until empty at current pace`;
+    }
     if (remainingMins === 0) {
       return `~${hours}h until empty at current pace`;
     }

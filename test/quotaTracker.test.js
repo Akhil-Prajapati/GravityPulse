@@ -30,27 +30,59 @@ function testPointToPointCalculations() {
 }
 
 function testServerRefillTimeFormat() {
-  console.log('🧪 Testing Server Auto-Refill Time Formatting...');
+  console.log('🧪 Testing Server Auto-Refill Time Formatting (including days & dates)...');
 
   function formatTimeDiff(ms, resetTime) {
     if (ms <= 0) {
       return 'Auto-Refilled / Full';
     }
-    const mins = Math.ceil(ms / 60000);
+    const totalMinutes = Math.ceil(ms / 60000);
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const mins = totalMinutes % 60;
+
     let duration = '';
-    if (mins < 60) {
-      duration = `${mins}m`;
+    if (days > 0) {
+      if (hours > 0) {
+        duration = `${days}d ${hours}h`;
+      } else {
+        duration = `${days}d`;
+      }
+    } else if (hours > 0) {
+      if (mins > 0) {
+        duration = `${hours}h ${mins}m`;
+      } else {
+        duration = `${hours}h`;
+      }
     } else {
-      const hours = Math.floor(mins / 60);
-      duration = `${hours}h ${mins % 60}m`;
+      duration = `${mins}m`;
     }
-    return `Auto-refills in ${duration}`;
+
+    const isDifferentDay = resetTime.toDateString() !== new Date().toDateString();
+    const timeStr = isDifferentDay
+      ? resetTime.toLocaleDateString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        })
+      : resetTime.toLocaleTimeString(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+
+    return `Auto-refills in ${duration} (${timeStr})`;
   }
 
   const now = Date.now();
   assert.strictEqual(formatTimeDiff(0, new Date(now)), 'Auto-Refilled / Full');
-  assert.strictEqual(formatTimeDiff(45 * 60 * 1000, new Date(now + 45 * 60000)), 'Auto-refills in 45m');
-  assert.strictEqual(formatTimeDiff(90 * 60 * 1000, new Date(now + 90 * 60000)), 'Auto-refills in 1h 30m');
+  assert.ok(formatTimeDiff(45 * 60 * 1000, new Date(now + 45 * 60000)).startsWith('Auto-refills in 45m ('));
+  assert.ok(formatTimeDiff(90 * 60 * 1000, new Date(now + 90 * 60000)).startsWith('Auto-refills in 1h 30m ('));
+  assert.ok(formatTimeDiff(146 * 3600 * 1000, new Date(now + 146 * 3600 * 1000)).startsWith('Auto-refills in 6d 2h ('));
+  assert.ok(formatTimeDiff(24 * 3600 * 1000, new Date(now + 24 * 3600 * 1000)).startsWith('Auto-refills in 1d ('));
 
   console.log('✅ Server Auto-Refill Time Formatting tests passed!');
 }
@@ -399,11 +431,14 @@ function testBurnRateTracker() {
   tracker.recordSample(refillModel, 80, now + 120000);
   assert.strictEqual(tracker.computeEstimate(refillModel), null, 'Increasing quota must return null');
 
-  // Test Hours Formatting
+  // Test Hours & Days Formatting
   assert.strictEqual(tracker.formatEta(38), '~38m until empty at current pace');
   assert.strictEqual(tracker.formatEta(60), '~1h until empty at current pace');
   assert.strictEqual(tracker.formatEta(75), '~1h 15m until empty at current pace');
   assert.strictEqual(tracker.formatEta(120), '~2h until empty at current pace');
+  assert.strictEqual(tracker.formatEta(1440), '~1d until empty at current pace');
+  assert.strictEqual(tracker.formatEta(1440 + 120), '~1d 2h until empty at current pace');
+  assert.strictEqual(tracker.formatEta(146 * 60 + 15), '~6d 2h until empty at current pace');
 
   console.log('✅ Burn-Rate & Time-to-Empty tests passed!');
 }
@@ -494,6 +529,187 @@ function testHistoryTrackerAndSparklines() {
   console.log('✅ Historical Usage Sparklines & 24h Pruning tests passed!');
 }
 
+// 6. Feature: Proto3 Zero Omission Fix & Weekly Quota Cascading
+function testProto3ZeroAndWeeklyQuota() {
+  console.log('🧪 Testing Proto3 Zero Omission Fix & Weekly Quota Linking...');
+
+  // Mock quota parsing logic as implemented in LiveQuotaClient
+  function parseModelQuota(m, quotaGroups, now = Date.now()) {
+    const quotaInfo = m.quotaInfo ?? m.quota_info;
+    const remFrac = quotaInfo?.remainingFraction ?? quotaInfo?.remaining_fraction;
+    const resetTimeStr = quotaInfo?.resetTime ?? quotaInfo?.reset_time;
+    const resetTime = resetTimeStr ? new Date(resetTimeStr) : new Date(0);
+    const diffMs = resetTime.getTime() - now;
+
+    // Helper to find weekly quota
+    const l = (m.label || '').toLowerCase();
+    let weekly;
+    for (const g of quotaGroups) {
+      const gName = g.displayName.toLowerCase();
+      const gDesc = (g.description || '').toLowerCase();
+      const isGemini = l.includes('gemini') && (gName.includes('gemini') || gDesc.includes('gemini'));
+      const isClaude = l.includes('claude') && (gName.includes('claude') || gDesc.includes('claude'));
+      const isGpt = l.includes('gpt') && (gName.includes('gpt') || gDesc.includes('gpt'));
+      if (isGemini || isClaude || isGpt) {
+        const wb = g.buckets.find((b) => b.window === 'weekly' || b.bucketId.toLowerCase().includes('weekly'));
+        if (wb) {
+          weekly = {
+            remainingFraction: wb.remainingFraction,
+            remainingPercentage: wb.remainingFraction * 100,
+            resetTime: wb.resetTime,
+            timeUntilResetFormatted: 'Refills in 6d 3h'
+          };
+          break;
+        }
+      }
+    }
+
+    let fraction;
+    if (remFrac !== undefined) {
+      fraction = Number(remFrac);
+    } else if (quotaInfo && diffMs > 0) {
+      fraction = 0.0;
+    } else {
+      fraction = 1.0;
+    }
+
+    let isExhausted = fraction === 0;
+    let effectiveResetTime = resetTime;
+
+    if (weekly && weekly.remainingFraction === 0) {
+      isExhausted = true;
+      fraction = 0.0;
+      effectiveResetTime = weekly.resetTime;
+    }
+
+    return {
+      label: m.label,
+      remainingFraction: fraction,
+      remainingPercentage: fraction * 100,
+      isExhausted,
+      resetTime: effectiveResetTime,
+      weeklyQuota: weekly
+    };
+  }
+
+  const now = Date.now();
+  const futureDate = new Date(now + 146 * 3600 * 1000).toISOString();
+
+  // Test 1: Proto3 omitted remainingFraction when quota is finished
+  const exhaustedProto3Model = {
+    label: 'Claude Sonnet 4.6 (Thinking)',
+    quotaInfo: {
+      resetTime: futureDate
+      // remainingFraction is omitted by Proto3 JSON because it is 0.0!
+    }
+  };
+
+  const parsed1 = parseModelQuota(exhaustedProto3Model, [], now);
+  assert.strictEqual(parsed1.remainingFraction, 0.0, 'Proto3 zero omission must evaluate to 0.0, not 1.0!');
+  assert.strictEqual(parsed1.remainingPercentage, 0.0, 'Must be 0.0%!');
+  assert.strictEqual(parsed1.isExhausted, true, 'Exhausted model must have isExhausted = true');
+
+  // Test 2: Normal 100% full model with no future reset
+  const fullModel = {
+    label: 'Gemini 3.7 Flash (High)',
+    quotaInfo: {
+      remainingFraction: 1.0,
+      resetTime: new Date(now - 1000).toISOString()
+    }
+  };
+  const parsed2 = parseModelQuota(fullModel, [], now);
+  assert.strictEqual(parsed2.remainingFraction, 1.0);
+  assert.strictEqual(parsed2.isExhausted, false);
+
+  // Test 3: Weekly Quota exhaustion cascade
+  const mockGroups = [
+    {
+      displayName: 'Gemini Models',
+      description: 'Models within this group: Gemini Flash, Gemini Pro',
+      buckets: [
+        {
+          bucketId: 'gemini-weekly',
+          window: 'weekly',
+          remainingFraction: 0.0, // Weekly limit completely empty!
+          resetTime: new Date(now + 146 * 3600 * 1000)
+        },
+        {
+          bucketId: 'gemini-5h',
+          window: '5h',
+          remainingFraction: 1.0, // 5h window refilled to 100%
+          resetTime: new Date(now + 3600 * 1000)
+        }
+      ]
+    },
+    {
+      displayName: 'Claude and GPT models',
+      description: 'Models within this group: Claude Opus, Claude Sonnet, GPT-OSS',
+      buckets: [
+        {
+          bucketId: '3p-weekly',
+          window: 'weekly',
+          remainingFraction: 0.85,
+          resetTime: new Date(now + 146 * 3600 * 1000)
+        }
+      ]
+    }
+  ];
+
+  // Gemini model with 5h window full (1.0), BUT weekly quota at 0.0
+  const geminiExhaustedWeekly = {
+    label: 'Gemini 3.6 Flash (Medium)',
+    quotaInfo: {
+      remainingFraction: 1.0,
+      resetTime: new Date(now + 3600 * 1000).toISOString()
+    }
+  };
+
+  const parsedGemini = parseModelQuota(geminiExhaustedWeekly, mockGroups, now);
+  assert.strictEqual(parsedGemini.isExhausted, true, 'Model must be exhausted when weekly quota is 0%!');
+  assert.strictEqual(parsedGemini.remainingFraction, 0.0, 'Effective fraction must be 0% when weekly limit is 0%!');
+  assert.ok(parsedGemini.weeklyQuota, 'Weekly quota must be attached');
+  assert.strictEqual(parsedGemini.weeklyQuota.remainingFraction, 0.0);
+
+  // Claude model with weekly quota remaining at 85%
+  const claudeActive = {
+    label: 'Claude Sonnet 4.6 (Thinking)',
+    quotaInfo: {
+      remainingFraction: 0.95,
+      resetTime: new Date(now + 3600 * 1000).toISOString()
+    }
+  };
+  const parsedClaude = parseModelQuota(claudeActive, mockGroups, now);
+  assert.strictEqual(parsedClaude.remainingFraction, 0.95);
+  assert.strictEqual(parsedClaude.isExhausted, false);
+  assert.ok(parsedClaude.weeklyQuota, 'Weekly quota must be attached to Claude model');
+  assert.strictEqual(parsedClaude.weeklyQuota.remainingPercentage, 85);
+
+  // Test 4: Tooltip Markdown structure has Weekly Limit under Remaining Capacity
+  function renderTooltipMarkdown(model) {
+    let md = '';
+    md += `- 🔄 **Auto-Refill Schedule:** ${model.timeUntilResetFormatted || 'Full'}\n`;
+    md += `- 🔋 **Remaining Capacity:** \`${(model.remainingFraction * 100).toFixed(2)}%\`\n`;
+    if (model.weeklyQuota) {
+      const wPct = (model.weeklyQuota.remainingFraction * 100).toFixed(2);
+      const refillCountdown = (model.weeklyQuota.timeUntilResetFormatted || '').replace(/^Auto-refills in /, '');
+      const wStatus = model.weeklyQuota.remainingFraction === 0
+        ? `\`${wPct}%\` ⚠️ *(Exhausted — Refills in ${refillCountdown})*`
+        : `\`${wPct}%\` *(Refills in ${refillCountdown})*`;
+      md += `- 📅 **Weekly Limit:** ${wStatus}\n`;
+    }
+    return md;
+  }
+
+  const tooltipWithWeekly = renderTooltipMarkdown({
+    ...parsedClaude,
+    timeUntilResetFormatted: 'Auto-refills in 45m'
+  });
+
+  assert.ok(tooltipWithWeekly.includes('- 🔋 **Remaining Capacity:** `95.00%`\n- 📅 **Weekly Limit:** `85.00%`'), 'Weekly Limit must appear directly under Remaining Capacity');
+
+  console.log('✅ Proto3 Zero Omission Fix & Weekly Quota Linking tests passed!');
+}
+
 function runAll() {
   console.log('🚀 Running GravityPulse Verification Tests...\n');
   testPointToPointCalculations();
@@ -507,6 +723,7 @@ function runAll() {
   testPromptCreditsAlerts();
   testBurnRateTracker();
   testHistoryTrackerAndSparklines();
+  testProto3ZeroAndWeeklyQuota();
   console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY!');
 }
 

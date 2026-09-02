@@ -175,6 +175,14 @@ export class StatusBarManager implements vscode.Disposable {
     md.appendMarkdown(`---\n\n`);
     md.appendMarkdown(`- 🔄 **Auto-Refill Schedule:** ${model.timeUntilResetFormatted}\n`);
     md.appendMarkdown(`- 🔋 **Remaining Capacity:** \`${(model.remainingFraction * 100).toFixed(2)}%\`\n`);
+    if (model.weeklyQuota) {
+      const wPct = (model.weeklyQuota.remainingFraction * 100).toFixed(2);
+      const refillCountdown = model.weeklyQuota.timeUntilResetFormatted.replace(/^Auto-refills in /, '');
+      const wStatus = model.weeklyQuota.remainingFraction === 0
+        ? `\`${wPct}%\` ⚠️ *(Exhausted — Refills in ${refillCountdown})*`
+        : `\`${wPct}%\` *(Refills in ${refillCountdown})*`;
+      md.appendMarkdown(`- 📅 **Weekly Limit:** ${wStatus}\n`);
+    }
 
     try {
       const burnEstimate = this.quotaTracker.getBurnRateEstimate(model.label);

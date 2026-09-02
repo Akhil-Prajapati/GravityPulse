@@ -7,6 +7,14 @@ export type DisplayStyle =
 
 export type PrecisionMode = 'integer' | 'single-decimal';
 
+export interface WeeklyQuotaInfo {
+  remainingFraction: number;
+  remainingPercentage: number;
+  resetTime: Date;
+  timeUntilResetFormatted: string;
+  description?: string;
+}
+
 export interface ModelQuotaInfo {
   label: string;
   modelId: string;
@@ -15,6 +23,7 @@ export interface ModelQuotaInfo {
   isExhausted: boolean;
   resetTime: Date;
   timeUntilResetFormatted: string;
+  weeklyQuota?: WeeklyQuotaInfo;
 }
 
 export interface PromptCreditsInfo {
@@ -24,10 +33,28 @@ export interface PromptCreditsInfo {
   remainingPercentage: number;
 }
 
+export interface QuotaGroupBucket {
+  bucketId: string;
+  displayName: string;
+  description?: string;
+  window: string;
+  remainingFraction: number;
+  remainingPercentage: number;
+  resetTime: Date;
+  timeUntilResetFormatted: string;
+}
+
+export interface QuotaGroup {
+  displayName: string;
+  description?: string;
+  buckets: QuotaGroupBucket[];
+}
+
 export interface LiveQuotaSnapshot {
   timestamp: Date;
   models: ModelQuotaInfo[];
   promptCredits?: PromptCreditsInfo;
+  quotaGroups?: QuotaGroup[];
 }
 
 export interface QuotaConfig {

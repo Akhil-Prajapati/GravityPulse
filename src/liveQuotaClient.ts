@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as https from 'https';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { LiveQuotaSnapshot, ModelQuotaInfo, PromptCreditsInfo } from './types';
+import { LiveQuotaSnapshot, ModelQuotaInfo, PromptCreditsInfo, WeeklyQuotaInfo, QuotaGroup, QuotaGroupBucket } from './types';
 
 const execAsync = promisify(exec);
 
@@ -294,28 +294,17 @@ export class LiveQuotaClient implements vscode.Disposable {
     });
   }
 
-  public async fetchQuota(): Promise<LiveQuotaSnapshot | null> {
+  private makeRpcRequest<T = any>(path: string, payload: any): Promise<T | null> {
     if (!this.port || !this.csrfToken) {
-      const ok = await this.discoverAndConnect();
-      if (!ok) {
-        return null;
-      }
+      return Promise.resolve(null);
     }
-
     return new Promise((resolve) => {
-      const postData = JSON.stringify({
-        metadata: {
-          ideName: 'antigravity',
-          extensionName: 'antigravity',
-          locale: 'en'
-        }
-      });
-
+      const postData = JSON.stringify(payload);
       const req = https.request(
         {
           hostname: '127.0.0.1',
           port: this.port,
-          path: '/exa.language_server_pb.LanguageServerService/GetUserStatus',
+          path,
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -333,31 +322,20 @@ export class LiveQuotaClient implements vscode.Disposable {
             if (res.statusCode === 200) {
               try {
                 const raw = JSON.parse(body);
-                const snapshot = this.parseResponse(raw);
-                this.lastSnapshot = snapshot;
-                this._onDidChangeSnapshot.fire(snapshot);
-                resolve(snapshot);
+                resolve(raw as T);
                 return;
               } catch {
-                // Ignore
+                // Ignore parse error
               }
             }
-            this.port = 0;
-            this.csrfToken = '';
             resolve(null);
           });
         }
       );
 
-      req.on('error', () => {
-        this.port = 0;
-        this.csrfToken = '';
-        resolve(null);
-      });
+      req.on('error', () => resolve(null));
       req.on('timeout', () => {
         req.destroy();
-        this.port = 0;
-        this.csrfToken = '';
         resolve(null);
       });
       req.write(postData);
@@ -365,8 +343,97 @@ export class LiveQuotaClient implements vscode.Disposable {
     });
   }
 
-  private parseResponse(data: any): LiveQuotaSnapshot {
-    const userStatus = data.userStatus || {};
+  public async fetchQuota(): Promise<LiveQuotaSnapshot | null> {
+    if (!this.port || !this.csrfToken) {
+      const ok = await this.discoverAndConnect();
+      if (!ok) {
+        return null;
+      }
+    }
+
+    const payload = {
+      metadata: {
+        ideName: 'antigravity',
+        extensionName: 'antigravity',
+        locale: 'en'
+      }
+    };
+
+    // Query both GetUserStatus and RetrieveUserQuotaSummary concurrently
+    const [userStatusRaw, quotaSummaryRaw] = await Promise.all([
+      this.makeRpcRequest('/exa.language_server_pb.LanguageServerService/GetUserStatus', payload),
+      this.makeRpcRequest('/exa.language_server_pb.LanguageServerService/RetrieveUserQuotaSummary', payload).catch(() => null)
+    ]);
+
+    if (!userStatusRaw) {
+      this.port = 0;
+      this.csrfToken = '';
+      return null;
+    }
+
+    const snapshot = this.parseResponse(userStatusRaw, quotaSummaryRaw);
+    this.lastSnapshot = snapshot;
+    this._onDidChangeSnapshot.fire(snapshot);
+    return snapshot;
+  }
+
+  private findWeeklyQuotaForModel(modelLabel: string, groups: QuotaGroup[]): WeeklyQuotaInfo | undefined {
+    const l = modelLabel.toLowerCase();
+
+    // 1. Match by group description or group name
+    for (const g of groups) {
+      const gName = g.displayName.toLowerCase();
+      const gDesc = (g.description || '').toLowerCase();
+      const isGemini = l.includes('gemini') && (gName.includes('gemini') || gDesc.includes('gemini'));
+      const isClaude = l.includes('claude') && (gName.includes('claude') || gDesc.includes('claude'));
+      const isGpt = l.includes('gpt') && (gName.includes('gpt') || gDesc.includes('gpt'));
+
+      if (isGemini || isClaude || isGpt) {
+        const weeklyBucket = g.buckets.find((b) => b.window === 'weekly' || b.bucketId.toLowerCase().includes('weekly'));
+        if (weeklyBucket) {
+          return {
+            remainingFraction: weeklyBucket.remainingFraction,
+            remainingPercentage: weeklyBucket.remainingPercentage,
+            resetTime: weeklyBucket.resetTime,
+            timeUntilResetFormatted: weeklyBucket.timeUntilResetFormatted,
+            description: weeklyBucket.description
+          };
+        }
+      }
+    }
+
+    // 2. Fallback: match by bucketId substring
+    for (const g of groups) {
+      for (const b of g.buckets) {
+        const bId = b.bucketId.toLowerCase();
+        if (b.window === 'weekly' || bId.includes('weekly')) {
+          if (l.includes('gemini') && bId.includes('gemini')) {
+            return {
+              remainingFraction: b.remainingFraction,
+              remainingPercentage: b.remainingPercentage,
+              resetTime: b.resetTime,
+              timeUntilResetFormatted: b.timeUntilResetFormatted,
+              description: b.description
+            };
+          }
+          if ((l.includes('claude') || l.includes('gpt')) && (bId.includes('3p') || bId.includes('claude') || bId.includes('gpt'))) {
+            return {
+              remainingFraction: b.remainingFraction,
+              remainingPercentage: b.remainingPercentage,
+              resetTime: b.resetTime,
+              timeUntilResetFormatted: b.timeUntilResetFormatted,
+              description: b.description
+            };
+          }
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private parseResponse(userData: any, quotaSummaryData?: any): LiveQuotaSnapshot {
+    const userStatus = userData?.userStatus || {};
     const planInfo = userStatus.planStatus?.planInfo;
     const availableCredits = userStatus.planStatus?.availablePromptCredits;
 
@@ -384,6 +451,36 @@ export class LiveQuotaClient implements vscode.Disposable {
       }
     }
 
+    const now = new Date();
+
+    // Parse Quota Groups from RetrieveUserQuotaSummary
+    const rawGroups = quotaSummaryData?.response?.groups || [];
+    const quotaGroups: QuotaGroup[] = [];
+    for (const g of rawGroups) {
+      const buckets: QuotaGroupBucket[] = [];
+      for (const b of g.buckets || []) {
+        const remFrac = b.remainingFraction !== undefined ? Number(b.remainingFraction) : 0.0;
+        const bResetStr = b.resetTime || b.reset_time;
+        const bResetTime = bResetStr ? new Date(bResetStr) : new Date(0);
+        const bDiffMs = bResetTime.getTime() - now.getTime();
+        buckets.push({
+          bucketId: b.bucketId || b.bucket_id || '',
+          displayName: b.displayName || b.display_name || '',
+          description: b.description || '',
+          window: b.window || '',
+          remainingFraction: remFrac,
+          remainingPercentage: remFrac * 100,
+          resetTime: bResetTime,
+          timeUntilResetFormatted: this.formatTimeDiff(bDiffMs, bResetTime)
+        });
+      }
+      quotaGroups.push({
+        displayName: g.displayName || g.display_name || '',
+        description: g.description || '',
+        buckets
+      });
+    }
+
     const rawModels = userStatus.cascadeModelConfigData?.clientModelConfigs || [];
     const models: ModelQuotaInfo[] = [];
 
@@ -392,10 +489,37 @@ export class LiveQuotaClient implements vscode.Disposable {
       const remFrac = quotaInfo?.remainingFraction ?? quotaInfo?.remaining_fraction;
       const resetTimeStr = quotaInfo?.resetTime ?? quotaInfo?.reset_time;
       const resetTime = resetTimeStr ? new Date(resetTimeStr) : new Date(0);
-      const now = new Date();
       const diffMs = resetTime.getTime() - now.getTime();
 
-      const fraction = remFrac !== undefined ? Number(remFrac) : 1.0;
+      const weekly = this.findWeeklyQuotaForModel(m.label || '', quotaGroups);
+
+      // Determine model remaining fraction:
+      // When quota is exhausted, proto3 omits remainingFraction from JSON (default 0.0 value).
+      // If resetTime is in future (diffMs > 0), the missing field represents 0.0, NOT 1.0!
+      let fraction: number;
+      if (remFrac !== undefined) {
+        fraction = Number(remFrac);
+      } else if (quotaInfo && diffMs > 0) {
+        fraction = 0.0;
+      } else if (quotaInfo) {
+        fraction = 1.0;
+      } else {
+        fraction = 1.0;
+      }
+
+      // If weekly limit is exhausted (0%), the quota IS OVER!
+      // Even if the 5-hour window refilled to 100%, the user cannot use the model because weekly limit is 0%.
+      let isExhausted = fraction === 0;
+      let effectiveResetTime = resetTime;
+      let effectiveDiffMs = diffMs;
+
+      if (weekly && weekly.remainingFraction === 0) {
+        isExhausted = true;
+        fraction = 0.0;
+        effectiveResetTime = weekly.resetTime;
+        effectiveDiffMs = weekly.resetTime.getTime() - now.getTime();
+      }
+
       const percent = fraction * 100;
 
       models.push({
@@ -403,9 +527,12 @@ export class LiveQuotaClient implements vscode.Disposable {
         modelId: m.modelOrAlias?.model ?? m.model_or_alias?.model ?? 'unknown',
         remainingFraction: fraction,
         remainingPercentage: percent,
-        isExhausted: fraction === 0,
-        resetTime: resetTime,
-        timeUntilResetFormatted: quotaInfo ? this.formatTimeDiff(diffMs, resetTime) : 'Full / Ready'
+        isExhausted,
+        resetTime: effectiveResetTime,
+        timeUntilResetFormatted: quotaInfo || weekly
+          ? this.formatTimeDiff(effectiveDiffMs, effectiveResetTime)
+          : 'Full / Ready',
+        weeklyQuota: weekly
       });
     }
 
@@ -440,28 +567,52 @@ export class LiveQuotaClient implements vscode.Disposable {
     return {
       timestamp: new Date(),
       models,
-      promptCredits
+      promptCredits,
+      quotaGroups
     };
   }
 
-  private formatTimeDiff(ms: number, resetTime: Date): string {
+  public formatTimeDiff(ms: number, resetTime: Date): string {
     if (ms <= 0) {
       return 'Auto-Refilled / Full';
     }
-    const mins = Math.ceil(ms / 60000);
+    const totalMinutes = Math.ceil(ms / 60000);
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const mins = totalMinutes % 60;
+
     let duration = '';
-    if (mins < 60) {
-      duration = `${mins}m`;
+    if (days > 0) {
+      if (hours > 0) {
+        duration = `${days}d ${hours}h`;
+      } else {
+        duration = `${days}d`;
+      }
+    } else if (hours > 0) {
+      if (mins > 0) {
+        duration = `${hours}h ${mins}m`;
+      } else {
+        duration = `${hours}h`;
+      }
     } else {
-      const hours = Math.floor(mins / 60);
-      duration = `${hours}h ${mins % 60}m`;
+      duration = `${mins}m`;
     }
 
-    const timeStr = resetTime.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+    const isDifferentDay = resetTime.toDateString() !== new Date().toDateString();
+    const timeStr = isDifferentDay
+      ? resetTime.toLocaleDateString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        })
+      : resetTime.toLocaleTimeString(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
 
     return `Auto-refills in ${duration} (${timeStr})`;
   }

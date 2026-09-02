@@ -71,14 +71,39 @@ export class DashboardManager {
           }
         }
 
+        let weeklySuffix = '';
+        if (m.weeklyQuota) {
+          const wPct = (m.weeklyQuota.remainingFraction * 100).toFixed(1);
+          weeklySuffix = ` • Weekly: ${wPct}%`;
+        }
+
         items.push({
           label: `${checkIcon}${statusIcon}${m.label}`,
           description: `${bar} ${pct}${trendSuffix}`,
           detail: isConnected
-            ? `   Auto-refill: ${m.timeUntilResetFormatted}${burnEta}`
+            ? `   Auto-refill: ${m.timeUntilResetFormatted}${weeklySuffix}${burnEta}`
             : '   Will show exact battery once server connects',
           modelLabel: m.label
         });
+      }
+
+      if (snapshot?.quotaGroups && snapshot.quotaGroups.length > 0) {
+        items.push({
+          kind: vscode.QuickPickItemKind.Separator,
+          label: '📅 Group Weekly Quota Limits'
+        });
+        for (const g of snapshot.quotaGroups) {
+          const weeklyBucket = g.buckets.find((b) => b.window === 'weekly' || b.bucketId.toLowerCase().includes('weekly'));
+          if (weeklyBucket) {
+            const wBar = this.drawProgressBar(weeklyBucket.remainingPercentage);
+            const wPct = `${weeklyBucket.remainingPercentage.toFixed(1)}%`;
+            items.push({
+              label: `$(calendar) ${g.displayName} — Weekly Quota`,
+              description: `${wBar} ${wPct} remaining`,
+              detail: `   ${weeklyBucket.timeUntilResetFormatted}${weeklyBucket.description ? ` • ${weeklyBucket.description}` : ''}`
+            });
+          }
+        }
       }
 
       if (snapshot?.promptCredits) {
