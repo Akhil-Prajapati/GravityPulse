@@ -6,6 +6,9 @@ import { BurnRateTracker } from './burnRateTracker';
 import { HistoryTracker } from './historyTracker';
 
 export const MODEL_ABBREVIATIONS: Record<string, string> = {
+  'Gemini 3.8 Flash (High)': 'G3.8F',
+  'Gemini 3.8 Flash (Medium)': 'G3.8F(M)',
+  'Gemini 3.8 Flash (Low)': 'G3.8F(L)',
   'Gemini 3.7 Flash (High)': 'G3.7F',
   'Gemini 3.7 Flash (Medium)': 'G3.7F(M)',
   'Gemini 3.7 Flash (Low)': 'G3.7F(L)',
@@ -165,6 +168,9 @@ export class QuotaTracker {
 
   public getDefaultModels(): ModelQuotaInfo[] {
     const defaultLabels = [
+      'Gemini 3.8 Flash (High)',
+      'Gemini 3.8 Flash (Medium)',
+      'Gemini 3.8 Flash (Low)',
       'Gemini 3.7 Flash (High)',
       'Gemini 3.6 Flash (Medium)',
       'Gemini 3.5 Flash (Medium)',
@@ -226,16 +232,48 @@ export class QuotaTracker {
     if (MODEL_ABBREVIATIONS[label]) {
       return MODEL_ABBREVIATIONS[label];
     }
-    if (label.includes('Claude')) {
+
+    const trimmed = label.trim();
+
+    // 1. Dynamic Gemini Flash Parser: e.g. "Gemini 3.8 Flash (High)" -> "G3.8F"
+    const geminiFlashMatch = trimmed.match(/gemini\s*(\d+\.?\d*)\s*flash(?:\s*\((High|Medium|Low)\))?/i);
+    if (geminiFlashMatch) {
+      const ver = geminiFlashMatch[1] || '';
+      const tier = geminiFlashMatch[2]?.toLowerCase();
+      const tierSuffix = tier === 'medium' ? '(M)' : tier === 'low' ? '(L)' : '';
+      return `G${ver}F${tierSuffix}`;
+    }
+
+    // 2. Dynamic Gemini Pro Parser: e.g. "Gemini 3.8 Pro (High)" -> "G3.8P"
+    const geminiProMatch = trimmed.match(/gemini\s*(\d+\.?\d*)\s*pro(?:\s*\((High|Medium|Low)\))?/i);
+    if (geminiProMatch) {
+      const ver = geminiProMatch[1] || '';
+      const tier = geminiProMatch[2]?.toLowerCase();
+      const tierSuffix = tier === 'low' ? '(L)' : '';
+      return `G${ver}P${tierSuffix}`;
+    }
+
+    // 3. Claude Parser
+    if (/claude\s*opus/i.test(trimmed)) {
+      return 'Opus';
+    }
+    if (/claude/i.test(trimmed)) {
       return 'Claude';
     }
-    if (label.includes('Flash')) {
+
+    // 4. GPT Parser
+    if (/gpt/i.test(trimmed)) {
+      return 'GPT';
+    }
+
+    if (trimmed.includes('Flash')) {
       return 'Flash';
     }
-    if (label.includes('Pro')) {
+    if (trimmed.includes('Pro')) {
       return 'Pro';
     }
-    return label.substring(0, 6);
+
+    return trimmed.substring(0, 6);
   }
 
   /**

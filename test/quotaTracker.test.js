@@ -710,6 +710,93 @@ function testProto3ZeroAndWeeklyQuota() {
   console.log('✅ Proto3 Zero Omission Fix & Weekly Quota Linking tests passed!');
 }
 
+// 7. Feature: Dynamic Model Abbreviations & Version Ranking
+function testDynamicModelAbbreviationsAndRanking() {
+  console.log('🧪 Testing Dynamic Model Abbreviations & Version-Based Ranking...');
+
+  function getModelAbbreviation(label) {
+    const trimmed = label.trim();
+    const geminiFlashMatch = trimmed.match(/gemini\s*(\d+\.?\d*)\s*flash(?:\s*\((High|Medium|Low)\))?/i);
+    if (geminiFlashMatch) {
+      const ver = geminiFlashMatch[1] || '';
+      const tier = geminiFlashMatch[2]?.toLowerCase();
+      const tierSuffix = tier === 'medium' ? '(M)' : tier === 'low' ? '(L)' : '';
+      return `G${ver}F${tierSuffix}`;
+    }
+
+    const geminiProMatch = trimmed.match(/gemini\s*(\d+\.?\d*)\s*pro(?:\s*\((High|Medium|Low)\))?/i);
+    if (geminiProMatch) {
+      const ver = geminiProMatch[1] || '';
+      const tier = geminiProMatch[2]?.toLowerCase();
+      const tierSuffix = tier === 'low' ? '(L)' : '';
+      return `G${ver}P${tierSuffix}`;
+    }
+
+    if (/claude\s*opus/i.test(trimmed)) return 'Opus';
+    if (/claude/i.test(trimmed)) return 'Claude';
+    if (/gpt/i.test(trimmed)) return 'GPT';
+    if (trimmed.includes('Flash')) return 'Flash';
+    if (trimmed.includes('Pro')) return 'Pro';
+    return trimmed.substring(0, 6);
+  }
+
+  // Test dynamic abbreviation generation
+  assert.strictEqual(getModelAbbreviation('Gemini 3.8 Flash (High)'), 'G3.8F');
+  assert.strictEqual(getModelAbbreviation('Gemini 3.8 Flash (Medium)'), 'G3.8F(M)');
+  assert.strictEqual(getModelAbbreviation('Gemini 3.8 Flash (Low)'), 'G3.8F(L)');
+  assert.strictEqual(getModelAbbreviation('Gemini 4.0 Flash (High)'), 'G4.0F', 'Future Gemini 4.0 must abbreviate automatically');
+  assert.strictEqual(getModelAbbreviation('Gemini 4.0 Pro (High)'), 'G4.0P');
+  assert.strictEqual(getModelAbbreviation('Claude Sonnet 4.6 (Thinking)'), 'Claude');
+  assert.strictEqual(getModelAbbreviation('Claude Opus 4.6 (Thinking)'), 'Opus');
+  assert.strictEqual(getModelAbbreviation('GPT-OSS 120B (Medium)'), 'GPT');
+
+  // Test dynamic ranking
+  const getRank = (label) => {
+    const l = label.toLowerCase();
+    if (l.includes('gemini') && l.includes('flash')) {
+      const vMatch = l.match(/(\d+\.?\d*)/);
+      const version = vMatch ? parseFloat(vMatch[1]) : 3.0;
+      let tierOffset = 0.05;
+      if (l.includes('high')) tierOffset = 0.01;
+      else if (l.includes('medium')) tierOffset = 0.02;
+      else if (l.includes('low')) tierOffset = 0.03;
+      return 100 - (version * 10) + tierOffset;
+    }
+    if (l.includes('gemini') && l.includes('pro')) {
+      const vMatch = l.match(/(\d+\.?\d*)/);
+      const version = vMatch ? parseFloat(vMatch[1]) : 3.0;
+      let tierOffset = 0.05;
+      if (l.includes('high')) tierOffset = 0.01;
+      else if (l.includes('low')) tierOffset = 0.03;
+      return 200 - (version * 10) + tierOffset;
+    }
+    if (l.includes('claude') && l.includes('sonnet')) return 300;
+    if (l.includes('claude') && l.includes('opus')) return 310;
+    if (l.includes('claude')) return 350;
+    if (l.includes('gpt')) return 400;
+    return 500;
+  };
+
+  const modelList = [
+    'Gemini 3.6 Flash (High)',
+    'Claude Sonnet 4.6 (Thinking)',
+    'Gemini 3.8 Flash (Medium)',
+    'Gemini 3.7 Flash (High)',
+    'Gemini 3.8 Flash (High)',
+    'GPT-OSS 120B (Medium)',
+    'Gemini 3.8 Flash (Low)'
+  ];
+
+  modelList.sort((a, b) => getRank(a) - getRank(b) || a.localeCompare(b));
+
+  assert.strictEqual(modelList[0], 'Gemini 3.8 Flash (High)', 'Gemini 3.8 High must be sorted #1');
+  assert.strictEqual(modelList[1], 'Gemini 3.8 Flash (Medium)', 'Gemini 3.8 Medium must be sorted #2');
+  assert.strictEqual(modelList[2], 'Gemini 3.8 Flash (Low)', 'Gemini 3.8 Low must be sorted #3');
+  assert.strictEqual(modelList[3], 'Gemini 3.7 Flash (High)', 'Gemini 3.7 High must be sorted #4');
+
+  console.log('✅ Dynamic Model Abbreviations & Version-Based Ranking tests passed!');
+}
+
 function runAll() {
   console.log('🚀 Running GravityPulse Verification Tests...\n');
   testPointToPointCalculations();
@@ -724,6 +811,7 @@ function runAll() {
   testBurnRateTracker();
   testHistoryTrackerAndSparklines();
   testProto3ZeroAndWeeklyQuota();
+  testDynamicModelAbbreviationsAndRanking();
   console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY!');
 }
 

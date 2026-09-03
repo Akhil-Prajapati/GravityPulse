@@ -1,8 +1,8 @@
 {
   "name": "gravity-pulse",
-  "displayName": "GravityPulse - Antigravity Quota (AGQ) Battery",
+  "displayName": "GravityPulse - Antigravity Quota, Token Limit & Validity Monitor",
   "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, weekly limit tracking, days auto-refill, burn-rate pace estimation, trend sparklines, multi-model pinning, and live server tracking.",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "publisher": "akhilninja",
   "author": {
     "name": "Akhil Prajapati"
@@ -24,6 +24,7 @@
     "google antigravity",
     "weekly quota",
     "weekly limit",
+    "validity",
     "quota",
     "quota monitor",
     "quota tracker",
@@ -39,6 +40,7 @@
     "token limit",
     "prompt credits",
     "gemini",
+    "gemini 3.8",
     "gemini 3.7",
     "gemini 3.6",
     "gemini 3.5",

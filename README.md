@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.8-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
+  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.9-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
   <a href="https://github.com/Akhil-Prajapati/GravityPulse"><img src="https://img.shields.io/badge/GitHub-GravityPulse-181717?style=for-the-badge&logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/precision-point--to--point-blue?style=for-the-badge" alt="Precision" />
   <img src="https://img.shields.io/badge/status-live%20IDE%20server-brightgreen?style=for-the-badge" alt="Status" />
@@ -25,7 +25,7 @@ Have you ever been in the middle of a complex refactor or architectural design w
 
 **GravityPulse** fixes that permanently. It brings a sleek, phone-style real-time battery status bar monitor to Antigravity IDE and VS Code. Sitting quietly in your bottom bar, it connects directly to your local **Antigravity Language Server** to track exact live percentages, calculate remaining burn time, plot historical trend sparklines, and alert you before you run out of tokens.
 
-> **Trending AI Models Supported:** Gemini 3.7 Flash (High/Medium/Low), Gemini 3.6 Flash, Gemini 3.5 Flash, Gemini 3.1 Pro, Claude Sonnet 4.6 (Thinking), Claude Opus 4.6, GPT-OSS 120B, and Available Monthly Prompt Credits.
+> **Trending AI Models Supported:** Gemini 3.8 Flash (High/Medium/Low), Gemini 3.7 Flash, Gemini 3.6 Flash, Gemini 3.5 Flash, Gemini 3.1 Pro, Claude Sonnet 4.6 (Thinking), Claude Opus 4.6, GPT-OSS 120B, and Available Monthly Prompt Credits.
 
 ---
 

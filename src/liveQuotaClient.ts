@@ -538,28 +538,54 @@ export class LiveQuotaClient implements vscode.Disposable {
 
     const getRank = (label: string): number => {
       const l = label.toLowerCase();
-      if (l.includes('3.7 flash') && l.includes('high')) return 1;
-      if (l.includes('3.7 flash') && l.includes('medium')) return 2;
-      if (l.includes('3.7 flash') && l.includes('low')) return 3;
-      if (l.includes('3.7 flash')) return 4;
-      if (l.includes('3.6 flash') && l.includes('high')) return 5;
-      if (l.includes('3.6 flash') && l.includes('medium')) return 6;
-      if (l.includes('3.6 flash') && l.includes('low')) return 7;
-      if (l.includes('3.6 flash')) return 8;
-      if (l.includes('3.5 flash') && l.includes('high')) return 9;
-      if (l.includes('3.5 flash') && l.includes('medium')) return 10;
-      if (l.includes('3.5 flash') && l.includes('low')) return 11;
-      if (l.includes('3.5 flash')) return 12;
-      if (l.includes('3.1 pro') && l.includes('high')) return 13;
-      if (l.includes('3.1 pro') && l.includes('low')) return 14;
-      if (l.includes('pro')) return 15;
-      if (l.includes('claude sonnet') && l.includes('4.6')) return 16;
-      if (l.includes('claude opus') && l.includes('4.6')) return 17;
-      if (l.includes('claude sonnet')) return 18;
-      if (l.includes('claude opus')) return 19;
-      if (l.includes('claude')) return 20;
-      if (l.includes('gpt')) return 21;
-      return 100;
+
+      // 1. Gemini Flash Models (e.g. Gemini 3.8 Flash (High), Gemini 3.7 Flash...)
+      if (l.includes('gemini') && l.includes('flash')) {
+        const vMatch = l.match(/(\d+\.?\d*)/);
+        const version = vMatch ? parseFloat(vMatch[1]) : 3.0;
+        let tierOffset = 0.05;
+        if (l.includes('high')) tierOffset = 0.01;
+        else if (l.includes('medium')) tierOffset = 0.02;
+        else if (l.includes('low')) tierOffset = 0.03;
+        // Higher version gets lower rank number (so sorted first)
+        return 100 - (version * 10) + tierOffset;
+      }
+
+      // 2. Gemini Pro Models (e.g. Gemini 3.1 Pro (High))
+      if (l.includes('gemini') && l.includes('pro')) {
+        const vMatch = l.match(/(\d+\.?\d*)/);
+        const version = vMatch ? parseFloat(vMatch[1]) : 3.0;
+        let tierOffset = 0.05;
+        if (l.includes('high')) tierOffset = 0.01;
+        else if (l.includes('low')) tierOffset = 0.03;
+        return 200 - (version * 10) + tierOffset;
+      }
+
+      // 3. Claude Sonnet
+      if (l.includes('claude') && l.includes('sonnet')) {
+        const vMatch = l.match(/(\d+\.?\d*)/);
+        const version = vMatch ? parseFloat(vMatch[1]) : 4.0;
+        return 300 - (version * 10);
+      }
+
+      // 4. Claude Opus
+      if (l.includes('claude') && l.includes('opus')) {
+        const vMatch = l.match(/(\d+\.?\d*)/);
+        const version = vMatch ? parseFloat(vMatch[1]) : 4.0;
+        return 310 - (version * 10);
+      }
+
+      // 5. Generic Claude
+      if (l.includes('claude')) {
+        return 350;
+      }
+
+      // 6. GPT
+      if (l.includes('gpt')) {
+        return 400;
+      }
+
+      return 500;
     };
 
     models.sort((a, b) => getRank(a.label) - getRank(b.label) || a.label.localeCompare(b.label));
