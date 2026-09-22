@@ -26,6 +26,8 @@ export class AlertManager {
   };
 
   private lastAlertTimestamp: number = 0;
+  private muteUntilTimestamp: number = 0;
+  private mutedModels: Map<string, number> = new Map();
 
   constructor() {}
 
@@ -37,6 +39,27 @@ export class AlertManager {
     this.lastAlertTimestamp = ts;
   }
 
+  public muteGlobal(durationMs: number, now: number = Date.now()): void {
+    this.muteUntilTimestamp = now + durationMs;
+  }
+
+  public muteModel(modelLabel: string, durationMs: number, now: number = Date.now()): void {
+    this.mutedModels.set(modelLabel.toLowerCase(), now + durationMs);
+  }
+
+  public isMuted(modelLabel?: string, now: number = Date.now()): boolean {
+    if (this.muteUntilTimestamp > now) {
+      return true;
+    }
+    if (modelLabel) {
+      const modelMuteExpiry = this.mutedModels.get(modelLabel.toLowerCase());
+      if (modelMuteExpiry && modelMuteExpiry > now) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public resetAll(): void {
     this.modelStates.clear();
     this.creditsState = {
@@ -46,6 +69,8 @@ export class AlertManager {
       pendingCrossing: null
     };
     this.lastAlertTimestamp = 0;
+    this.muteUntilTimestamp = 0;
+    this.mutedModels.clear();
   }
 
   public getModelState(key: string): TrackedAlertState | undefined {
@@ -68,6 +93,11 @@ export class AlertManager {
   ): QuotaAlertEvent[] {
     const events: QuotaAlertEvent[] = [];
 
+    // Check if globally muted
+    if (this.isMuted(undefined, now)) {
+      return events;
+    }
+
     // 1. Process Model Quotas
     const modelThresholds: ThresholdDefinition[] = [
       { tier: 'info' as AlertTier, threshold: config.infoThreshold },
@@ -84,6 +114,11 @@ export class AlertManager {
         if (!isPinned) {
           // If unpinned, remove or clear pending crossings
           this.modelStates.delete(model.label);
+          continue;
+        }
+
+        // Check if this specific model is muted
+        if (this.isMuted(model.label, now)) {
           continue;
         }
 
@@ -161,10 +196,22 @@ export class AlertManager {
     now: number,
     extra: Partial<QuotaAlertEvent>
   ): QuotaAlertEvent | null {
-    // 1. Check for Refill / Quota Increase
-    if (state.lastPercentage !== null && currentPercentage > state.lastPercentage) {
-      state.lastAlertedThreshold = null;
-      state.lastAlertedTier = null;
+    // 1. Check for Genuine Refill / Quota Increase with Hysteresis
+    // To prevent jitter / flapping around a threshold from continuously triggering alerts:
+    // Only reset lastAlertedThreshold if quota has risen above the alerted threshold + hysteresis (3%)
+    // or if quota has risen by a significant amount (>= 10%)
+    const hysteresisBuffer = 3.0;
+
+    if (state.lastAlertedThreshold !== null) {
+      const resetThreshold = state.lastAlertedThreshold + hysteresisBuffer;
+      const substantialRefill = state.lastPercentage !== null && (currentPercentage - state.lastPercentage) >= 10.0;
+      if (currentPercentage > resetThreshold || substantialRefill) {
+        state.lastAlertedThreshold = null;
+        state.lastAlertedTier = null;
+        state.pendingCrossing = null;
+      }
+    } else if (state.lastPercentage !== null && currentPercentage > state.lastPercentage + 2.0) {
+      // Clear any pending crossing if quota is climbing
       state.pendingCrossing = null;
     }
     state.lastPercentage = currentPercentage;
@@ -187,7 +234,7 @@ export class AlertManager {
 
     // 3. Check if this is a clean downward crossing below a threshold not yet alerted this cycle
     if (state.lastAlertedThreshold !== null && matchingThreshold.threshold >= state.lastAlertedThreshold) {
-      // Already alerted at this or a more severe threshold
+      // Already alerted at this or a more severe threshold - DO NOT RE-FIRE!
       state.pendingCrossing = null;
       return null;
     }

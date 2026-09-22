@@ -32,9 +32,6 @@ export class QuotaTracker {
   private readonly _onDidChangeQuotaState = new vscode.EventEmitter<void>();
   public readonly onDidChangeQuotaState = this._onDidChangeQuotaState.event;
 
-  private readonly _onLowBatteryWarning = new vscode.EventEmitter<{ level: number; model: string; critical: boolean }>();
-  public readonly onLowBatteryWarning = this._onLowBatteryWarning.event;
-
   private readonly _onQuotaAlert = new vscode.EventEmitter<QuotaAlertEvent>();
   public readonly onQuotaAlert = this._onQuotaAlert.event;
 
@@ -55,7 +52,6 @@ export class QuotaTracker {
     this.liveClient.onDidChangeSnapshot((snapshot) => {
       this.latestSnapshot = snapshot;
       this.processNewSnapshot(snapshot);
-      this.checkThresholds();
       this._onDidChangeQuotaState.fire();
     });
   }
@@ -335,21 +331,16 @@ export class QuotaTracker {
     };
   }
 
-  private checkThresholds(): void {
-    const models = this.getModels();
-    const pinned = this.getPinnedModels();
+  public muteAlerts(durationMs: number): void {
+    this.alertManager.muteGlobal(durationMs);
+  }
 
-    for (const m of models) {
-      if (pinned.includes(m.label)) {
-        if (m.remainingPercentage <= this.config.criticalThreshold && this.config.showToastOnLowBattery) {
-          this._onLowBatteryWarning.fire({
-            level: m.remainingPercentage,
-            model: m.label,
-            critical: true
-          });
-        }
-      }
-    }
+  public muteModelAlerts(modelLabel: string, durationMs: number): void {
+    this.alertManager.muteModel(modelLabel, durationMs);
+  }
+
+  public isAlertMuted(modelLabel?: string): boolean {
+    return this.alertManager.isMuted(modelLabel);
   }
 }
 

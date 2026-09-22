@@ -17,6 +17,7 @@ export class LiveQuotaClient implements vscode.Disposable {
   public readonly onDidChangeSnapshot = this._onDidChangeSnapshot.event;
 
   private lastSnapshot: LiveQuotaSnapshot | null = null;
+  private lastQuotaGroups: QuotaGroup[] = [];
 
   constructor() {
     this.init();
@@ -479,6 +480,13 @@ export class LiveQuotaClient implements vscode.Disposable {
         description: g.description || '',
         buckets
       });
+    }
+
+    if (quotaGroups.length > 0) {
+      this.lastQuotaGroups = quotaGroups;
+    } else if (this.lastQuotaGroups.length > 0) {
+      // Retain previously cached groups to avoid weekly quota dropping to null on temporary RPC timeout
+      quotaGroups.push(...this.lastQuotaGroups);
     }
 
     const rawModels = userStatus.cascadeModelConfigData?.clientModelConfigs || [];

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.0.9-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
+  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.1.0-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
   <a href="https://github.com/Akhil-Prajapati/GravityPulse"><img src="https://img.shields.io/badge/GitHub-GravityPulse-181717?style=for-the-badge&logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/precision-point--to--point-blue?style=for-the-badge" alt="Precision" />
   <img src="https://img.shields.io/badge/status-live%20IDE%20server-brightgreen?style=for-the-badge" alt="Status" />
@@ -68,10 +68,14 @@ Have you ever been in the middle of a complex refactor or architectural design w
   - **`— (gathering data)`** — Initializing on startup.
 - Stores history locally in `globalState` (capped at 100 points) and prunes data older than 24 hours automatically.
 
-### 4. 🔔 Multi-Tier Anti-Spam Quota Alerts
+### 4. 🔔 Multi-Tier Anti-Spam Quota Alerts & Instant Controls
 - **3 Threshold Tiers**: Info (`20%`), Critical (`10%`), and Severe (`5%`).
-- **Clean Crossing Only**: Only fires on clean downward transitions not yet alerted in the current cycle.
-- **Refill Reset**: Automatically resets state when quota increases.
+- **Hysteresis & Anti-Jitter Protection**: Locks alerted state so minor fluctuations or exhausted 0% quotas never spam notifications repeatedly.
+- **Interactive Action Buttons**: Directly on notification toasts:
+  - **`Manage Models`** — Open Interactive Dashboard.
+  - **`Mute for 1 Hour`** — Temporarily silence toasts while you work.
+  - **`Turn Off Alerts`** — Disables toast notifications with one click.
+- **Refill Reset**: Automatically resets alert state only when quota genuinely refills above threshold.
 - **2-Cycle Debounce**: Flapping protection prevents annoying alert spam near boundary points.
 - **Global Cooldown**: Enforces max 1 toast per 2 minutes across all sources.
 - **Pinned Only**: Never fires alerts for models you haven't pinned.

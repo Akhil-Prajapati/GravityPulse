@@ -49,8 +49,19 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(configListener);
 
   // 7. Handle Multi-Tier Quota & Credits Alerts (Anti-Spam, Non-Modal)
-  const quotaAlertListener = quotaTracker.onQuotaAlert((event) => {
+  const quotaAlertListener = quotaTracker.onQuotaAlert(async (event) => {
     try {
+      const cfg = quotaTracker.getConfig();
+      if (!cfg.showToastOnLowBattery && event.type === 'model') {
+        return;
+      }
+      if (!cfg.showToastOnLowCredits && event.type === 'credits') {
+        return;
+      }
+      if (quotaTracker.isAlertMuted(event.modelLabel)) {
+        return;
+      }
+
       if (event.type === 'credits') {
         const formatted = `${event.currentPercentage.toFixed(1)}%`;
         const tierName = event.tier.charAt(0).toUpperCase() + event.tier.slice(1);
@@ -58,29 +69,50 @@ export function activate(context: vscode.ExtensionContext): void {
           event.availableCredits !== undefined && event.monthlyCredits !== undefined
             ? ` (${event.availableCredits.toLocaleString()} / ${event.monthlyCredits.toLocaleString()} available)`
             : '';
-        vscode.window
-          .showWarningMessage(
-            `GravityPulse: Available Credits are low [${tierName} Alert] at ${formatted}${creditsDetail}.`,
-            'Manage Models'
-          )
-          .then((selection) => {
-            if (selection === 'Manage Models') {
-              dashboardManager.showDashboard();
-            }
-          });
+        
+        const selection = await vscode.window.showWarningMessage(
+          `GravityPulse: Available Credits are low [${tierName} Alert] at ${formatted}${creditsDetail}.`,
+          'Manage Models',
+          'Mute for 1 Hour',
+          'Turn Off Alerts'
+        );
+
+        if (selection === 'Manage Models') {
+          dashboardManager.showDashboard();
+        } else if (selection === 'Mute for 1 Hour') {
+          quotaTracker.muteAlerts(60 * 60 * 1000);
+          vscode.window.showInformationMessage('GravityPulse: Credits alerts muted for 1 hour.');
+        } else if (selection === 'Turn Off Alerts') {
+          await vscode.workspace
+            .getConfiguration('gravitypulse')
+            .update('showToastOnLowCredits', false, vscode.ConfigurationTarget.Global);
+          quotaTracker.reloadConfig();
+          vscode.window.showInformationMessage('GravityPulse: Low credits alerts turned off. You can re-enable them in settings anytime.');
+        }
       } else {
         const formatted = `${event.currentPercentage.toFixed(1)}%`;
         const tierName = event.tier.charAt(0).toUpperCase() + event.tier.slice(1);
-        vscode.window
-          .showWarningMessage(
-            `GravityPulse: ${event.modelLabel || 'Model'} quota is low [${tierName} Alert] at ${formatted}.`,
-            'Manage Models'
-          )
-          .then((selection) => {
-            if (selection === 'Manage Models') {
-              dashboardManager.showDashboard();
-            }
-          });
+        const modelName = event.modelLabel || 'Model';
+
+        const selection = await vscode.window.showWarningMessage(
+          `GravityPulse: ${modelName} quota is low [${tierName} Alert] at ${formatted}.`,
+          'Manage Models',
+          'Mute for 1 Hour',
+          'Turn Off Alerts'
+        );
+
+        if (selection === 'Manage Models') {
+          dashboardManager.showDashboard();
+        } else if (selection === 'Mute for 1 Hour') {
+          quotaTracker.muteAlerts(60 * 60 * 1000);
+          vscode.window.showInformationMessage(`GravityPulse: Alerts muted for 1 hour.`);
+        } else if (selection === 'Turn Off Alerts') {
+          await vscode.workspace
+            .getConfiguration('gravitypulse')
+            .update('showToastOnLowBattery', false, vscode.ConfigurationTarget.Global);
+          quotaTracker.reloadConfig();
+          vscode.window.showInformationMessage('GravityPulse: Low battery alerts turned off. You can re-enable them in settings anytime.');
+        }
       }
     } catch (err) {
       console.error('GravityPulse: Error displaying alert notification:', err);

@@ -348,6 +348,121 @@ function testUnpinnedModelAlertSuppression() {
   console.log('✅ Unpinned Model Alert Suppression tests passed!');
 }
 
+function testHysteresisAndAntiJitter() {
+  console.log('🧪 Testing Hysteresis & Anti-Jitter Alert Protection...');
+
+  const config = {
+    infoThreshold: 20,
+    criticalThreshold: 10,
+    severeThreshold: 5,
+    globalAlertCooldownMinutes: 0, // Cooldown disabled to test pure hysteresis
+    creditsInfoThreshold: 25,
+    creditsCriticalThreshold: 10,
+    creditsSevereThreshold: 3
+  };
+
+  const modelLabel = 'Gemini 3.8 Flash (High)';
+  const pinned = [modelLabel];
+  const makeModel = (pct) => ({
+    label: modelLabel,
+    modelId: 'gemini_3_8_flash_high',
+    remainingPercentage: pct,
+    remainingFraction: pct / 100,
+    isExhausted: pct === 0,
+    resetTime: new Date(),
+    timeUntilResetFormatted: 'Ready'
+  });
+
+  const am = new AlertManager();
+  let baseTime = 6000000;
+
+  // Poll 1: 5% (Severe tier cycle 1)
+  let events = am.processSnapshot([makeModel(5)], pinned, undefined, config, baseTime);
+  assert.strictEqual(events.length, 0);
+
+  // Poll 2: 4.8% (Severe tier cycle 2) -> Severe alert fires!
+  events = am.processSnapshot([makeModel(4.8)], pinned, undefined, config, baseTime + 30000);
+  assert.strictEqual(events.length, 1);
+  assert.strictEqual(events[0].tier, 'severe');
+
+  // Poll 3: Jitter upwards to 5.0% (below reset threshold 5 + 3 = 8%)
+  events = am.processSnapshot([makeModel(5.0)], pinned, undefined, config, baseTime + 60000);
+  assert.strictEqual(events.length, 0, 'Jitter within hysteresis buffer must not reset alert state');
+
+  // Poll 4: Jitter back to 4.7%
+  events = am.processSnapshot([makeModel(4.7)], pinned, undefined, config, baseTime + 90000);
+  assert.strictEqual(events.length, 0, 'Must NOT re-alert on downward jitter while below threshold');
+
+  // Poll 5: Drop to 0% (exhausted)
+  events = am.processSnapshot([makeModel(0.0)], pinned, undefined, config, baseTime + 120000);
+  assert.strictEqual(events.length, 0, 'Exhausted state must NOT spam continuous alerts');
+
+  // Poll 6: Stays at 0%
+  events = am.processSnapshot([makeModel(0.0)], pinned, undefined, config, baseTime + 150000);
+  assert.strictEqual(events.length, 0, 'Persistent 0% must remain completely quiet');
+
+  // Poll 7: True Refill to 50%
+  events = am.processSnapshot([makeModel(50.0)], pinned, undefined, config, baseTime + 180000);
+  assert.strictEqual(events.length, 0);
+  assert.strictEqual(am.getModelState(modelLabel).lastAlertedThreshold, null, 'State reset after true refill');
+
+  console.log('✅ Hysteresis & Anti-Jitter Alert Protection tests passed!');
+}
+
+function testMuteSupport() {
+  console.log('🧪 Testing Global & Per-Model Alert Muting...');
+
+  const config = {
+    infoThreshold: 20,
+    criticalThreshold: 10,
+    severeThreshold: 5,
+    globalAlertCooldownMinutes: 0,
+    creditsInfoThreshold: 25,
+    creditsCriticalThreshold: 10,
+    creditsSevereThreshold: 3
+  };
+
+  const modelA = 'Gemini 3.8 Flash (High)';
+  const modelB = 'Claude Opus 4.6 (Thinking)';
+  const pinned = [modelA, modelB];
+
+  const makeModel = (label, pct) => ({
+    label,
+    modelId: label.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+    remainingPercentage: pct,
+    remainingFraction: pct / 100,
+    isExhausted: pct === 0,
+    resetTime: new Date(),
+    timeUntilResetFormatted: 'Ready'
+  });
+
+  const am = new AlertManager();
+  let baseTime = 7000000;
+
+  // Mute Model A for 1 hour
+  am.muteModel(modelA, 3600000, baseTime);
+  assert.strictEqual(am.isMuted(modelA, baseTime), true);
+  assert.strictEqual(am.isMuted(modelB, baseTime), false);
+
+  // Model A and B both at 4% (Severe tier, 2 cycles)
+  am.processSnapshot([makeModel(modelA, 4), makeModel(modelB, 4)], pinned, undefined, config, baseTime);
+  let events = am.processSnapshot([makeModel(modelA, 4), makeModel(modelB, 4)], pinned, undefined, config, baseTime + 30000);
+
+  // Model A is muted so only Model B fires
+  assert.strictEqual(events.length, 1);
+  assert.strictEqual(events[0].modelLabel, modelB);
+
+  // Global Mute for 30 minutes
+  am.muteGlobal(1800000, baseTime + 30000);
+  assert.strictEqual(am.isMuted(undefined, baseTime + 30000), true);
+
+  // All alerts suppressed under global mute
+  events = am.processSnapshot([makeModel(modelA, 4), makeModel(modelB, 2)], pinned, undefined, config, baseTime + 60000);
+  assert.strictEqual(events.length, 0, 'Global mute must suppress all alerts');
+
+  console.log('✅ Global & Per-Model Alert Muting tests passed!');
+}
+
 // 3. Feature 4: Prompt Credits Threshold Alerts
 function testPromptCreditsAlerts() {
   console.log('🧪 Testing Prompt Credits Threshold Alerts Stream...');
@@ -807,6 +922,8 @@ function runAll() {
   testDebounceReversalCancellation();
   testGlobalCooldown();
   testUnpinnedModelAlertSuppression();
+  testHysteresisAndAntiJitter();
+  testMuteSupport();
   testPromptCreditsAlerts();
   testBurnRateTracker();
   testHistoryTrackerAndSparklines();
