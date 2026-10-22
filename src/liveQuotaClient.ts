@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as https from 'https';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { LiveQuotaSnapshot, ModelQuotaInfo, PromptCreditsInfo, WeeklyQuotaInfo, QuotaGroup, QuotaGroupBucket } from './types';
+import { LiveQuotaSnapshot, ModelQuotaInfo, PromptCreditsInfo, WeeklyQuotaInfo, QuotaGroup, QuotaGroupBucket, isObsoleteModel } from './types';
 
 const execAsync = promisify(exec);
 
@@ -493,6 +493,9 @@ export class LiveQuotaClient implements vscode.Disposable {
     const models: ModelQuotaInfo[] = [];
 
     for (const m of rawModels) {
+      if (m.label && isObsoleteModel(m.label)) {
+        continue;
+      }
       const quotaInfo = m.quotaInfo ?? m.quota_info;
       const remFrac = quotaInfo?.remainingFraction ?? quotaInfo?.remaining_fraction;
       const resetTimeStr = quotaInfo?.resetTime ?? quotaInfo?.reset_time;

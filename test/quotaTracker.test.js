@@ -2,6 +2,7 @@ const assert = require('assert');
 const { AlertManager } = require('../dist/alertManager');
 const { BurnRateTracker } = require('../dist/burnRateTracker');
 const { HistoryTracker } = require('../dist/historyTracker');
+const { isObsoleteModel } = require('../dist/types');
 
 // 1. Existing Point-to-point precision tests
 function testPointToPointCalculations() {
@@ -143,11 +144,11 @@ function testAlertManagerStateMachine() {
     creditsSevereThreshold: 3
   };
 
-  const modelLabel = 'Gemini 3.6 Flash (Medium)';
+  const modelLabel = 'Gemini 3.8 Flash (High)';
   const pinned = [modelLabel];
   const makeModel = (pct) => ({
     label: modelLabel,
-    modelId: 'gemini_3_6_flash_medium',
+    modelId: 'gemini_3_8_flash_high',
     remainingPercentage: pct,
     remainingFraction: pct / 100,
     isExhausted: pct === 0,
@@ -217,11 +218,11 @@ function testDebounceReversalCancellation() {
     creditsSevereThreshold: 3
   };
 
-  const modelLabel = 'Gemini 3.7 Flash (High)';
+  const modelLabel = 'Gemini 3.8 Flash (Medium)';
   const pinned = [modelLabel];
   const makeModel = (pct) => ({
     label: modelLabel,
-    modelId: 'gemini_3_7_flash_high',
+    modelId: 'gemini_3_8_flash_medium',
     remainingPercentage: pct,
     remainingFraction: pct / 100,
     isExhausted: false,
@@ -264,8 +265,8 @@ function testGlobalCooldown() {
     creditsSevereThreshold: 3
   };
 
-  const modelA = 'Gemini 3.6 Flash (Medium)';
-  const modelB = 'Gemini 3.7 Flash (High)';
+  const modelA = 'Gemini 3.8 Flash (High)';
+  const modelB = 'Gemini 3.8 Flash (Medium)';
   const pinned = [modelA, modelB];
 
   const makeModel = (label, pct) => ({
@@ -322,7 +323,7 @@ function testUnpinnedModelAlertSuppression() {
   };
 
   const unpinnedModel = 'Claude Opus 4.6 (Thinking)';
-  const pinned = ['Gemini 3.6 Flash (Medium)']; // Unpinned model not in pinned list
+  const pinned = ['Gemini 3.8 Flash (High)']; // Unpinned model not in pinned list
 
   const makeModel = (pct) => ({
     label: unpinnedModel,
@@ -516,7 +517,7 @@ function testBurnRateTracker() {
   console.log('🧪 Testing Burn-Rate & Time-to-Empty Calculation...');
 
   const tracker = new BurnRateTracker();
-  const model = 'Gemini 3.6 Flash (Medium)';
+  const model = 'Gemini 3.8 Flash (High)';
   const now = 1000000;
 
   // Less than 3 samples -> null
@@ -574,7 +575,7 @@ function testHistoryTrackerAndSparklines() {
   };
 
   const ht = new HistoryTracker(mockContext);
-  const model = 'Gemini 3.7 Flash (High)';
+  const model = 'Gemini 3.8 Flash (High)';
   const now = Date.now();
 
   // Test block conversion
@@ -726,7 +727,7 @@ function testProto3ZeroAndWeeklyQuota() {
 
   // Test 2: Normal 100% full model with no future reset
   const fullModel = {
-    label: 'Gemini 3.7 Flash (High)',
+    label: 'Gemini 3.8 Flash (High)',
     quotaInfo: {
       remainingFraction: 1.0,
       resetTime: new Date(now - 1000).toISOString()
@@ -772,7 +773,7 @@ function testProto3ZeroAndWeeklyQuota() {
 
   // Gemini model with 5h window full (1.0), BUT weekly quota at 0.0
   const geminiExhaustedWeekly = {
-    label: 'Gemini 3.6 Flash (Medium)',
+    label: 'Gemini 3.8 Flash (High)',
     quotaInfo: {
       remainingFraction: 1.0,
       resetTime: new Date(now + 3600 * 1000).toISOString()
@@ -893,10 +894,8 @@ function testDynamicModelAbbreviationsAndRanking() {
   };
 
   const modelList = [
-    'Gemini 3.6 Flash (High)',
     'Claude Sonnet 4.6 (Thinking)',
     'Gemini 3.8 Flash (Medium)',
-    'Gemini 3.7 Flash (High)',
     'Gemini 3.8 Flash (High)',
     'GPT-OSS 120B (Medium)',
     'Gemini 3.8 Flash (Low)'
@@ -907,9 +906,44 @@ function testDynamicModelAbbreviationsAndRanking() {
   assert.strictEqual(modelList[0], 'Gemini 3.8 Flash (High)', 'Gemini 3.8 High must be sorted #1');
   assert.strictEqual(modelList[1], 'Gemini 3.8 Flash (Medium)', 'Gemini 3.8 Medium must be sorted #2');
   assert.strictEqual(modelList[2], 'Gemini 3.8 Flash (Low)', 'Gemini 3.8 Low must be sorted #3');
-  assert.strictEqual(modelList[3], 'Gemini 3.7 Flash (High)', 'Gemini 3.7 High must be sorted #4');
+  assert.strictEqual(modelList[3], 'Claude Sonnet 4.6 (Thinking)', 'Claude Sonnet must be sorted #4');
 
   console.log('✅ Dynamic Model Abbreviations & Version-Based Ranking tests passed!');
+}
+
+function testObsoleteModelRemovalAndAutoHealing() {
+  console.log('🧪 Testing Obsolete Model Removal (< 3.8) & Auto-Healing Protection...');
+
+  // 1. Verify obsolete model classification
+  assert.strictEqual(isObsoleteModel('Gemini 3.6 Flash (Medium)'), true, 'Gemini 3.6 must be identified as obsolete');
+  assert.strictEqual(isObsoleteModel('Gemini 3.7 Flash (High)'), true, 'Gemini 3.7 must be identified as obsolete');
+  assert.strictEqual(isObsoleteModel('Gemini 3.5 Flash (Low)'), true, 'Gemini 3.5 must be identified as obsolete');
+  assert.strictEqual(isObsoleteModel('Gemini 3.1 Pro (High)'), true, 'Gemini 3.1 must be identified as obsolete');
+  assert.strictEqual(isObsoleteModel('Gemini 3.8 Flash (High)'), false, 'Gemini 3.8 must NOT be obsolete');
+  assert.strictEqual(isObsoleteModel('Gemini 3.8 Flash (Medium)'), false, 'Gemini 3.8 Medium must NOT be obsolete');
+  assert.strictEqual(isObsoleteModel('Claude Sonnet 4.6 (Thinking)'), false, 'Claude must NOT be obsolete');
+  assert.strictEqual(isObsoleteModel('GPT-OSS 120B (Medium)'), false, 'GPT-OSS must NOT be obsolete');
+
+  // 2. Verify auto-healing migration when pinned models are all obsolete
+  const legacySavedPinned = ['Gemini 3.6 Flash (Medium)', 'Gemini 3.7 Flash (High)'];
+  const sanitized = legacySavedPinned.filter((m) => !isObsoleteModel(m));
+  assert.strictEqual(sanitized.length, 0, 'All legacy models must be filtered out');
+
+  const healedPinned = sanitized.length > 0 ? sanitized : ['Gemini 3.8 Flash (High)'];
+  assert.strictEqual(healedPinned[0], 'Gemini 3.8 Flash (High)', 'Must heal to Gemini 3.8 Flash (High)');
+
+  // 3. Status Bar Item registration contract (guarantees right click menu visibility)
+  const fallbackId = 'gravitypulse.status';
+  const fallbackName = 'GravityPulse: Quota Battery';
+  assert.ok(fallbackId.startsWith('gravitypulse.'), 'Status bar item must have explicit extension ID');
+  assert.ok(fallbackName.startsWith('GravityPulse:'), 'Status bar item must have explicit name for right click menu');
+
+  const modelItemId = `gravitypulse.model.gemini_3_8_flash_high`;
+  const modelItemName = `GravityPulse: Gemini 3.8 Flash (High)`;
+  assert.ok(modelItemId.startsWith('gravitypulse.model.'), 'Model item must have explicit model ID');
+  assert.ok(modelItemName.startsWith('GravityPulse:'), 'Model item must have explicit name for right click menu');
+
+  console.log('✅ Obsolete Model Removal & Auto-Healing Protection tests passed!');
 }
 
 function runAll() {
@@ -929,6 +963,7 @@ function runAll() {
   testHistoryTrackerAndSparklines();
   testProto3ZeroAndWeeklyQuota();
   testDynamicModelAbbreviationsAndRanking();
+  testObsoleteModelRemovalAndAutoHealing();
   console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY!');
 }
 

@@ -33,10 +33,17 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.showInformationMessage('GravityPulse: Refreshed live model quota from Antigravity.');
   });
 
+  const cmdResetStatusBar = vscode.commands.registerCommand('gravitypulse.resetStatusBar', async () => {
+    await quotaTracker.resetToDefaultModel();
+    statusBarManager.updateDisplay();
+    vscode.window.showInformationMessage('GravityPulse: Status bar battery display reset & restored.');
+  });
+
   context.subscriptions.push(
     cmdShowDashboard,
     cmdSwitchModel,
-    cmdSyncLogs
+    cmdSyncLogs,
+    cmdResetStatusBar
   );
 
   // 6. Handle Configuration Changes

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { QuotaConfig, DisplayStyle, PrecisionMode, LiveQuotaSnapshot, ModelQuotaInfo, QuotaAlertEvent, BurnRateEstimate, ModelTrendInfo } from './types';
+import { QuotaConfig, DisplayStyle, PrecisionMode, LiveQuotaSnapshot, ModelQuotaInfo, QuotaAlertEvent, BurnRateEstimate, ModelTrendInfo, isObsoleteModel } from './types';
 import { LiveQuotaClient } from './liveQuotaClient';
 import { AlertManager } from './alertManager';
 import { BurnRateTracker } from './burnRateTracker';
@@ -9,17 +9,6 @@ export const MODEL_ABBREVIATIONS: Record<string, string> = {
   'Gemini 3.8 Flash (High)': 'G3.8F',
   'Gemini 3.8 Flash (Medium)': 'G3.8F(M)',
   'Gemini 3.8 Flash (Low)': 'G3.8F(L)',
-  'Gemini 3.7 Flash (High)': 'G3.7F',
-  'Gemini 3.7 Flash (Medium)': 'G3.7F(M)',
-  'Gemini 3.7 Flash (Low)': 'G3.7F(L)',
-  'Gemini 3.6 Flash (High)': 'G3.6F',
-  'Gemini 3.6 Flash (Medium)': 'G3.6F(M)',
-  'Gemini 3.6 Flash (Low)': 'G3.6F(L)',
-  'Gemini 3.5 Flash (High)': 'G3.5F',
-  'Gemini 3.5 Flash (Medium)': 'G3.5F(M)',
-  'Gemini 3.5 Flash (Low)': 'G3.5F(L)',
-  'Gemini 3.1 Pro (High)': 'G3.1P',
-  'Gemini 3.1 Pro (Low)': 'G3.1P(L)',
   'Claude Sonnet 4.6 (Thinking)': 'Claude',
   'Claude Opus 4.6 (Thinking)': 'Opus',
   'GPT-OSS 120B (Medium)': 'GPT'
@@ -167,12 +156,9 @@ export class QuotaTracker {
       'Gemini 3.8 Flash (High)',
       'Gemini 3.8 Flash (Medium)',
       'Gemini 3.8 Flash (Low)',
-      'Gemini 3.7 Flash (High)',
-      'Gemini 3.6 Flash (Medium)',
-      'Gemini 3.5 Flash (Medium)',
-      'Gemini 3.1 Pro (High)',
       'Claude Sonnet 4.6 (Thinking)',
-      'Claude Opus 4.6 (Thinking)'
+      'Claude Opus 4.6 (Thinking)',
+      'GPT-OSS 120B (Medium)'
     ];
     return defaultLabels.map((lbl) => ({
       label: lbl,
@@ -187,16 +173,44 @@ export class QuotaTracker {
 
   public getModels(): ModelQuotaInfo[] {
     if (this.latestSnapshot && this.latestSnapshot.models.length > 0) {
-      return this.latestSnapshot.models;
+      const active = this.latestSnapshot.models.filter((m) => !isObsoleteModel(m.label));
+      if (active.length > 0) {
+        return active;
+      }
     }
     return this.getDefaultModels();
   }
 
   public getPinnedModels(): string[] {
     if (this.config.pinnedModels && this.config.pinnedModels.length > 0) {
-      return this.config.pinnedModels;
+      const valid = this.config.pinnedModels.filter((m) => !isObsoleteModel(m));
+      if (valid.length > 0) {
+        return valid;
+      }
     }
-    return ['Gemini 3.6 Flash (Medium)'];
+    return ['Gemini 3.8 Flash (High)'];
+  }
+
+  public async healPinnedModels(validModels: string[]): Promise<void> {
+    if (!validModels || validModels.length === 0) {
+      return;
+    }
+    this.config.pinnedModels = validModels;
+    await this.context.globalState.update('gravitypulse.pinnedModels', validModels);
+    try {
+      await vscode.workspace
+        .getConfiguration('gravitypulse')
+        .update('pinnedModels', validModels, vscode.ConfigurationTarget.Global);
+    } catch {
+      // Ignore if configuration update is delayed
+    }
+    this._onDidChangeQuotaState.fire();
+  }
+
+  public async resetToDefaultModel(): Promise<void> {
+    const models = this.getModels();
+    const defaultModel = models.length > 0 ? models[0].label : 'Gemini 3.8 Flash (High)';
+    await this.healPinnedModels([defaultModel]);
   }
 
   public async togglePinnedModel(label: string): Promise<void> {
@@ -302,14 +316,18 @@ export class QuotaTracker {
     const savedPinned = this.context.globalState.get<string[]>('gravitypulse.pinnedModels');
     const configPinned = wsConfig.get<string[]>('pinnedModels');
 
-    // Priority: 1. Saved globalState -> 2. Config -> 3. Default ['Gemini 3.6 Flash (Medium)']
-    let pinned: string[];
+    // Priority: 1. Saved globalState -> 2. Config -> 3. Default ['Gemini 3.8 Flash (High)']
+    let pinned: string[] = [];
     if (savedPinned && Array.isArray(savedPinned) && savedPinned.length > 0) {
-      pinned = savedPinned;
+      pinned = savedPinned.filter((m) => !isObsoleteModel(m));
     } else if (configPinned && Array.isArray(configPinned) && configPinned.length > 0) {
-      pinned = configPinned;
-    } else {
-      pinned = ['Gemini 3.6 Flash (Medium)'];
+      pinned = configPinned.filter((m) => !isObsoleteModel(m));
+    }
+
+    if (pinned.length === 0) {
+      pinned = ['Gemini 3.8 Flash (High)'];
+      // Automatically migrate and save valid default
+      this.context.globalState.update('gravitypulse.pinnedModels', pinned);
     }
 
     return {

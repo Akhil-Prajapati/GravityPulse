@@ -108,3 +108,16 @@ export interface ModelTrendInfo {
   formatted: string;
   pointsCount: number;
 }
+
+export function isObsoleteModel(label: string): boolean {
+  if (!label) return false;
+  const l = label.toLowerCase().trim();
+  const match = l.match(/gemini\s*(\d+\.?\d*)/);
+  if (match) {
+    const ver = parseFloat(match[1]);
+    if (ver < 3.8) {
+      return true;
+    }
+  }
+  return false;
+}

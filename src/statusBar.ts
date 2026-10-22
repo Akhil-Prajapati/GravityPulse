@@ -9,11 +9,14 @@ export class StatusBarManager implements vscode.Disposable {
 
   constructor(private quotaTracker: QuotaTracker) {
     this.fallbackItem = vscode.window.createStatusBarItem(
+      'gravitypulse.status',
       vscode.StatusBarAlignment.Right,
       100
     );
+    this.fallbackItem.name = 'GravityPulse: Quota Battery';
     this.fallbackItem.command = 'gravitypulse.showDashboard';
     this.fallbackItem.text = '$(zap) AGQ';
+    this.fallbackItem.tooltip = 'Click to open GravityPulse Quota Dashboard';
 
     this.updateDisplay();
 
@@ -30,16 +33,14 @@ export class StatusBarManager implements vscode.Disposable {
     const allModels = this.quotaTracker.getModels();
     const pinnedLabels = this.quotaTracker.getPinnedModels();
 
-    // If no snapshot yet or no models pinned, show fallback item
-    if (allModels.length === 0 || pinnedLabels.length === 0) {
+    // If no models available at all, show fallback item
+    if (allModels.length === 0) {
       this.clearSpecificItems();
       this.fallbackItem.text = '$(zap) AGQ: Connecting...';
-      this.fallbackItem.tooltip = 'Click to select models to display';
+      this.fallbackItem.tooltip = 'GravityPulse: Connecting to Antigravity Language Server... Click to manage models';
       this.fallbackItem.show();
       return;
     }
-
-    this.fallbackItem.hide();
 
     // Track active model labels to prune unpinned items
     const activePinned = new Set<string>();
@@ -58,10 +59,13 @@ export class StatusBarManager implements vscode.Disposable {
       let item = this.itemsMap.get(label);
 
       if (!item) {
+        const itemId = `gravitypulse.model.${modelInfo.modelId || label.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
         item = vscode.window.createStatusBarItem(
+          itemId,
           vscode.StatusBarAlignment.Right,
           priority
         );
+        item.name = `GravityPulse: ${modelInfo.label}`;
         item.command = 'gravitypulse.showDashboard';
         this.itemsMap.set(label, item);
       }
@@ -69,6 +73,42 @@ export class StatusBarManager implements vscode.Disposable {
       priority--;
       this.renderModelItem(item, modelInfo, config);
       item.show();
+    }
+
+    // Auto-heal: If none of the pinned models matched in allModels (e.g. user had old removed model),
+    // pick allModels[0] and heal configuration immediately!
+    if (activePinned.size === 0 && allModels.length > 0) {
+      const fallbackModel = allModels[0];
+      activePinned.add(fallbackModel.label);
+      let item = this.itemsMap.get(fallbackModel.label);
+
+      if (!item) {
+        const itemId = `gravitypulse.model.${fallbackModel.modelId || fallbackModel.label.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        item = vscode.window.createStatusBarItem(
+          itemId,
+          vscode.StatusBarAlignment.Right,
+          priority
+        );
+        item.name = `GravityPulse: ${fallbackModel.label}`;
+        item.command = 'gravitypulse.showDashboard';
+        this.itemsMap.set(fallbackModel.label, item);
+      }
+
+      this.renderModelItem(item, fallbackModel, config);
+      item.show();
+
+      // Asynchronously heal user's pinned models
+      this.quotaTracker.healPinnedModels([fallbackModel.label]);
+    }
+
+    // Never leave the footer empty:
+    // If activePinned is empty (for any unexpected reason), ALWAYS show fallback item!
+    if (activePinned.size === 0) {
+      this.fallbackItem.text = '$(zap) AGQ: Connecting...';
+      this.fallbackItem.tooltip = 'GravityPulse: Click to open Quota Battery Dashboard';
+      this.fallbackItem.show();
+    } else {
+      this.fallbackItem.hide();
     }
 
     // Dispose items for unpinned models

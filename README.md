@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.1.0-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
+  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.1.1-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
   <a href="https://github.com/Akhil-Prajapati/GravityPulse"><img src="https://img.shields.io/badge/GitHub-GravityPulse-181717?style=for-the-badge&logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/precision-point--to--point-blue?style=for-the-badge" alt="Precision" />
   <img src="https://img.shields.io/badge/status-live%20IDE%20server-brightgreen?style=for-the-badge" alt="Status" />
@@ -25,7 +25,7 @@ Have you ever been in the middle of a complex refactor or architectural design w
 
 **GravityPulse** fixes that permanently. It brings a sleek, phone-style real-time battery status bar monitor to Antigravity IDE and VS Code. Sitting quietly in your bottom bar, it connects directly to your local **Antigravity Language Server** to track exact live percentages, calculate remaining burn time, plot historical trend sparklines, and alert you before you run out of tokens.
 
-> **Trending AI Models Supported:** Gemini 3.8 Flash (High/Medium/Low), Gemini 3.7 Flash, Gemini 3.6 Flash, Gemini 3.5 Flash, Gemini 3.1 Pro, Claude Sonnet 4.6 (Thinking), Claude Opus 4.6, GPT-OSS 120B, and Available Monthly Prompt Credits.
+> **Trending AI Models Supported:** Gemini 3.8 Flash (High/Medium/Low), Claude Sonnet 4.6 (Thinking), Claude Opus 4.6, GPT-OSS 120B, and Available Monthly Prompt Credits.
 
 ---
 
@@ -107,11 +107,11 @@ Have you ever been in the middle of a complex refactor or architectural design w
 
 ### 2. Switching Status Bar Styles
 Open the dashboard and select **`Change Status Bar Display Style`** (or change `gravitypulse.displayStyle` in Settings):
-- **Battery Bar (Default)**: `⚡ G3.7F [███████░] 94.1%`
-- **Zap Percent**: `⚡ G3.7F: 94.1%`
-- **Activity Percent**: `📶 G3.7F: 94.1%`
+- **Battery Bar (Default)**: `⚡ G3.8F [███████░] 94.1%`
+- **Zap Percent**: `⚡ G3.8F: 94.1%`
+- **Activity Percent**: `📶 G3.8F: 94.1%`
 - **Minimalist**: `94.1% ⚡`
-- **Detailed**: `⚡ G3.7F: 94.1% [███████░]`
+- **Detailed**: `⚡ G3.8F: 94.1% [███████░]`
 
 ### 3. Switching Percentage Precision
 Choose between:
@@ -143,7 +143,7 @@ All settings can be customized in VS Code Settings (<kbd>Ctrl</kbd>+<kbd>,</kbd>
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `gravitypulse.pinnedModels` | `["Gemini 3.6 Flash (Medium)"]` | AI models displayed simultaneously in the status bar. |
+| `gravitypulse.pinnedModels` | `["Gemini 3.8 Flash (High)"]` | AI models displayed simultaneously in the status bar. |
 | `gravitypulse.displayStyle` | `"battery-bar"` | Visual status bar style (`battery-bar`, `zap-percent`, `activity-percent`, `minimal`, `detailed`). |
 | `gravitypulse.precision` | `"single-decimal"` | Numeric format (`single-decimal` or `integer`). |
 | `gravitypulse.pollingIntervalSeconds` | `30` | Interval in seconds between live Language Server polls. |
@@ -198,7 +198,7 @@ All settings can be customized in VS Code Settings (<kbd>Ctrl</kbd>+<kbd>,</kbd>
     <tr>
       <td>
         <h3>🏎️ 2. The F1 Pit-Crew Model Tag-Team</h3>
-        <p>Why stick to one model? Pin <strong>Gemini 3.7 Flash</strong>, <strong>Claude Sonnet 4.6</strong>, and <strong>GPT-OSS</strong> side-by-side. When Gemini's battery dips below 20%, seamlessly switch to Claude with zero downtime.</p>
+        <p>Why stick to one model? Pin <strong>Gemini 3.8 Flash</strong>, <strong>Claude Sonnet 4.6</strong>, and <strong>GPT-OSS</strong> side-by-side. When Gemini's battery dips below 20%, seamlessly switch to Claude with zero downtime.</p>
       </td>
     </tr>
     <tr>
@@ -215,11 +215,11 @@ All settings can be customized in VS Code Settings (<kbd>Ctrl</kbd>+<kbd>,</kbd>
 ## 💡 Pro-Gamer Power User Tips
 
 - **⚡ Tip 1: The Triple-Cockpit Setup**  
-  Pin 1 Ultra-Fast Model (`Gemini 3.7 Flash`) + 1 Deep Reasoning Model (`Claude Sonnet 4.6 Thinking`) + `Prompt Credits`. You'll always know your exact capacity at every tier.
+  Pin 1 Ultra-Fast Model (`Gemini 3.8 Flash`) + 1 Deep Reasoning Model (`Claude Sonnet 4.6 Thinking`) + `Prompt Credits`. You'll always know your exact capacity at every tier.
 - **⏳ Tip 2: The Coffee-Break Pace Indicator**  
   If the hover card says `~15m until empty at current pace`, check the `Auto-Refill Schedule`. If it refills in 10 minutes, grab a quick coffee and come back to a 100% full tank!
 - **🎨 Tip 3: Aesthetic Customization**  
-  Prefer a distraction-free IDE? Switch to **`Minimalist`** (`94.1% ⚡`). Love retro cyberpunk terminal vibes? Switch to **`Battery Bar`** (`⚡ G3.7F [███████░] 94.1%`).
+  Prefer a distraction-free IDE? Switch to **`Minimalist`** (`94.1% ⚡`). Love retro cyberpunk terminal vibes? Switch to **`Battery Bar`** (`⚡ G3.8F [███████░] 94.1%`).
 
 ---
 
@@ -243,7 +243,7 @@ If GravityPulse has saved you from hitting unexpected rate limits and saved your
 ---
 
 ## 🏷️ Search Tags & Keywords
-`antigravity quota` • `google antigravity` • `gemini 3.7 flash` • `gemini 3.6 flash` • `gemini 3.5 flash` • `claude 3.7 sonnet` • `claude sonnet 4.6` • `claude opus` • `gpt-oss` • `ai battery` • `token monitor` • `burn rate` • `rate limit monitor` • `sparkline trend` • `ai developer tools` • `prompt credits` • `vscodium` • `antigravity ide` • `realtime quota battery`
+`antigravity quota` • `google antigravity` • `gemini 3.8 flash` • `gemini 3.8 high` • `claude sonnet 4.6` • `claude opus` • `gpt-oss` • `ai battery` • `token monitor` • `burn rate` • `rate limit monitor` • `sparkline trend` • `ai developer tools` • `prompt credits` • `vscodium` • `antigravity ide` • `realtime quota battery`
 
 ## 📄 License
 

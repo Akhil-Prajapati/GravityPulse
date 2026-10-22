@@ -2,7 +2,7 @@
   "name": "gravity-pulse",
   "displayName": "GravityPulse - Antigravity Quota, Token Limit & Validity Monitor",
   "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, weekly limit tracking, days auto-refill, burn-rate pace estimation, trend sparklines, multi-model pinning, and live server tracking.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "akhilninja",
   "author": {
     "name": "Akhil Prajapati"
@@ -51,14 +51,10 @@
     "gemini",
     "gemini 3.8",
     "gemini 3.8 flash",
-    "gemini 3.7",
-    "gemini 3.7 flash",
-    "gemini 3.6",
-    "gemini 3.5",
+    "gemini 3.8 high",
     "gemini pro",
     "gemini flash",
     "claude",
-    "claude 3.7 sonnet",
     "claude sonnet",
     "claude opus",
     "claude 4.6",
@@ -94,6 +90,11 @@
         "command": "gravitypulse.syncAntigravityLogs",
         "title": "GravityPulse: Refresh Live Quota from Antigravity Server",
         "category": "GravityPulse"
+      },
+      {
+        "command": "gravitypulse.resetStatusBar",
+        "title": "GravityPulse: Reset & Restore Status Bar Battery Display",
+        "category": "GravityPulse"
       }
     ],
     "configuration": {
@@ -105,7 +106,7 @@
             "type": "string"
           },
           "default": [
-            "Gemini 3.6 Flash (Medium)"
+            "Gemini 3.8 Flash (High)"
           ],
           "description": "List of AI models to display simultaneously in the status bar."
         },
@@ -119,7 +120,7 @@
             "detailed"
           ],
           "default": "battery-bar",
-          "description": "Status bar battery display style (e.g. $(zap) G3.7F [███████░] 94.1%). Fully styled with Carbon Product Icons."
+          "description": "Status bar battery display style (e.g. $(zap) G3.8F [███████░] 94.1%). Fully styled with Carbon Product Icons."
         },
         "gravitypulse.precision": {
           "type": "string",
