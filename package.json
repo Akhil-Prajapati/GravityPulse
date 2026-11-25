@@ -2,7 +2,7 @@
   "name": "gravity-pulse",
   "displayName": "GravityPulse - Antigravity Quota, Token Limit & Validity Monitor",
   "description": "Phone-style real-time battery status bar monitor for Antigravity AI Quota with point-to-point precision, weekly limit tracking, days auto-refill, burn-rate pace estimation, trend sparklines, multi-model pinning, and live server tracking.",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "publisher": "akhilninja",
   "author": {
     "name": "Akhil Prajapati"
@@ -49,6 +49,11 @@
     "battery",
     "status bar",
     "gemini",
+    "gemini 4",
+    "gemini 4 hydrogen",
+    "gemini 4 neon",
+    "gemini 4 carbon",
+    "gemini 4 argon",
     "gemini 3.8",
     "gemini 3.8 flash",
     "gemini 3.8 high",
@@ -58,6 +63,7 @@
     "claude sonnet",
     "claude opus",
     "claude 4.6",
+    "claude 5.5",
     "gpt-oss",
     "burn rate",
     "sparkline",
@@ -106,7 +112,7 @@
             "type": "string"
           },
           "default": [
-            "Gemini 3.8 Flash (High)"
+            "Gemini 4 Hydrogen (High)"
           ],
           "description": "List of AI models to display simultaneously in the status bar."
         },
@@ -120,7 +126,7 @@
             "detailed"
           ],
           "default": "battery-bar",
-          "description": "Status bar battery display style (e.g. $(zap) G3.8F [███████░] 94.1%). Fully styled with Carbon Product Icons."
+          "description": "Status bar battery display style (e.g. $(zap) G4H [███████░] 94.1%). Fully styled with Carbon Product Icons."
         },
         "gravitypulse.precision": {
           "type": "string",

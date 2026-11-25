@@ -1,14 +1,20 @@
 import * as vscode from 'vscode';
+import * as http from 'http';
 import * as https from 'https';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { LiveQuotaSnapshot, ModelQuotaInfo, PromptCreditsInfo, WeeklyQuotaInfo, QuotaGroup, QuotaGroupBucket, isObsoleteModel } from './types';
+import { LiveQuotaSnapshot, PromptCreditsInfo, QuotaGroup, QuotaGroupBucket } from './types';
+import { DaemonHubEntry, parseClientModelConfigs, parseDaemonHubJson } from './modelUtils';
 
 const execAsync = promisify(exec);
 
 export class LiveQuotaClient implements vscode.Disposable {
   private port: number = 0;
   private csrfToken: string = '';
+  private useHttps: boolean = true;
   private pollingTimer: NodeJS.Timeout | null = null;
   private isDisposed = false;
   private disposables: vscode.Disposable[] = [];
@@ -54,6 +60,7 @@ export class LiveQuotaClient implements vscode.Disposable {
       // Retry discovery once more on failure
       this.port = 0;
       this.csrfToken = '';
+      this.useHttps = true;
       await this.discoverAndConnect();
       return this.fetchQuota();
     }
@@ -62,6 +69,47 @@ export class LiveQuotaClient implements vscode.Disposable {
 
   private async discoverAndConnect(): Promise<boolean> {
     try {
+      // 1. Check direct environment variables if present
+      const envAddress = process.env.ANTIGRAVITY_LS_ADDRESS;
+      const envToken = process.env.ANTIGRAVITY_CSRF_TOKEN;
+      if (envAddress && envToken) {
+        const portPart = parseInt(envAddress.split(':').pop() || '', 10);
+        if (portPart > 0) {
+          for (const useHttps of [false, true]) {
+            if (await this.testPort(portPart, envToken, useHttps)) {
+              this.port = portPart;
+              this.csrfToken = envToken;
+              this.useHttps = useHttps;
+              await this.fetchQuota();
+              return true;
+            }
+          }
+        }
+      }
+
+      // 2. Discover Antigravity 2.0 / agy --hub daemon discovery files (~/.gemini/antigravity/daemon/hub_*.json)
+      const daemonEntries = this.discoverDaemonHubEntries();
+      for (const entry of daemonEntries) {
+        const endpoints: Array<{ port: number; useHttps: boolean }> = [];
+        if (entry.httpsPort > 0) {
+          endpoints.push({ port: entry.httpsPort, useHttps: true });
+        }
+        if (entry.httpPort > 0) {
+          endpoints.push({ port: entry.httpPort, useHttps: false });
+        }
+
+        for (const ep of endpoints) {
+          if (await this.testPort(ep.port, entry.csrfToken, ep.useHttps)) {
+            this.port = ep.port;
+            this.csrfToken = entry.csrfToken;
+            this.useHttps = ep.useHttps;
+            await this.fetchQuota();
+            return true;
+          }
+        }
+      }
+
+      // 3. Legacy fallback: process inspection for language_server / --csrf_token
       const isWin = process.platform === 'win32';
       const processes = await this.discoverLanguageServers(isWin);
 
@@ -73,12 +121,14 @@ export class LiveQuotaClient implements vscode.Disposable {
         const ports = await this.getListeningPorts(proc.pid, isWin);
 
         for (const p of ports) {
-          const ok = await this.testPort(p, proc.csrfToken);
-          if (ok) {
-            this.port = p;
-            this.csrfToken = proc.csrfToken;
-            await this.fetchQuota();
-            return true;
+          for (const useHttps of [true, false]) {
+            if (await this.testPort(p, proc.csrfToken, useHttps)) {
+              this.port = p;
+              this.csrfToken = proc.csrfToken;
+              this.useHttps = useHttps;
+              await this.fetchQuota();
+              return true;
+            }
           }
         }
       }
@@ -86,6 +136,63 @@ export class LiveQuotaClient implements vscode.Disposable {
       // Fallback
     }
     return false;
+  }
+
+  private isProcessAlive(pid: number): boolean {
+    if (!pid || pid <= 0) {
+      return false;
+    }
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch (err: any) {
+      // EPERM means process exists without signal permission; ESRCH means dead
+      return err?.code === 'EPERM';
+    }
+  }
+
+  private discoverDaemonHubEntries(): DaemonHubEntry[] {
+    const home = os.homedir();
+    const daemonDirs = [
+      path.join(home, '.gemini', 'antigravity', 'daemon'),
+      path.join(home, '.gemini', 'antigravity-ide', 'daemon')
+    ];
+
+    const entries: DaemonHubEntry[] = [];
+    for (const dir of daemonDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          continue;
+        }
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          if (!file.endsWith('.json')) {
+            continue;
+          }
+          const fullPath = path.join(dir, file);
+          try {
+            const stat = fs.statSync(fullPath);
+            const raw = fs.readFileSync(fullPath, 'utf8');
+            const parsed = parseDaemonHubJson(raw, fullPath, stat.mtimeMs);
+            if (!parsed) {
+              continue;
+            }
+            if (parsed.pid > 0 && !this.isProcessAlive(parsed.pid)) {
+              continue;
+            }
+            entries.push(parsed);
+          } catch {
+            // Skip unreadable/stale file
+          }
+        }
+      } catch {
+        // Ignore missing directory
+      }
+    }
+
+    // Prefer most recently started hub
+    entries.sort((a, b) => b.mtimeMs - a.mtimeMs);
+    return entries;
   }
 
   private async discoverLanguageServers(isWin: boolean): Promise<{ pid: number; csrfToken: string }[]> {
@@ -240,108 +347,85 @@ export class LiveQuotaClient implements vscode.Disposable {
     return combined;
   }
 
-  private testPort(port: number, token: string): Promise<boolean> {
+  private sendRpcRequest<T = any>(
+    port: number,
+    token: string,
+    useHttps: boolean,
+    rpcPath: string,
+    payload: any,
+    timeoutMs: number
+  ): Promise<{ statusCode?: number; data: T | null }> {
     return new Promise((resolve) => {
-      const data = JSON.stringify({
+      const postData = JSON.stringify(payload);
+      const transport = useHttps ? https : http;
+      const options: https.RequestOptions = {
+        hostname: '127.0.0.1',
+        port,
+        path: rpcPath,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Connect-Protocol-Version': '1',
+          'X-Codeium-Csrf-Token': token,
+          'x-antigravity-csrf-token': token,
+          'Content-Length': Buffer.byteLength(postData)
+        },
+        timeout: timeoutMs
+      };
+      if (useHttps) {
+        options.rejectUnauthorized = false;
+      }
+
+      const req = transport.request(options, (res) => {
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try {
+              resolve({ statusCode: res.statusCode, data: JSON.parse(body) as T });
+              return;
+            } catch {
+              // Ignore parse error
+            }
+          }
+          resolve({ statusCode: res.statusCode, data: null });
+        });
+      });
+
+      req.on('error', () => resolve({ data: null }));
+      req.on('timeout', () => {
+        req.destroy();
+        resolve({ data: null });
+      });
+      req.write(postData);
+      req.end();
+    });
+  }
+
+  private async testPort(port: number, token: string, useHttps: boolean = true): Promise<boolean> {
+    const res = await this.sendRpcRequest<any>(
+      port,
+      token,
+      useHttps,
+      '/exa.language_server_pb.LanguageServerService/GetUserStatus',
+      {
         metadata: {
           ideName: 'antigravity',
           extensionName: 'antigravity',
           locale: 'en'
         }
-      });
-
-      const req = https.request(
-        {
-          hostname: '127.0.0.1',
-          port: port,
-          path: '/exa.language_server_pb.LanguageServerService/GetUserStatus',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Connect-Protocol-Version': '1',
-            'X-Codeium-Csrf-Token': token,
-            'Content-Length': Buffer.byteLength(data)
-          },
-          rejectUnauthorized: false,
-          timeout: 4000
-        },
-        (res) => {
-          let body = '';
-          res.on('data', (c) => (body += c));
-          res.on('end', () => {
-            if (res.statusCode === 200) {
-              try {
-                const parsed = JSON.parse(body);
-                if (parsed.userStatus) {
-                  resolve(true);
-                  return;
-                }
-              } catch {
-                // Ignore
-              }
-            }
-            resolve(false);
-          });
-        }
-      );
-
-      req.on('error', () => resolve(false));
-      req.on('timeout', () => {
-        req.destroy();
-        resolve(false);
-      });
-      req.write(data);
-      req.end();
-    });
+      },
+      4000
+    );
+    return Boolean(res.statusCode === 200 && res.data?.userStatus);
   }
 
-  private makeRpcRequest<T = any>(path: string, payload: any): Promise<T | null> {
+  private async makeRpcRequest<T = any>(rpcPath: string, payload: any): Promise<T | null> {
     if (!this.port || !this.csrfToken) {
-      return Promise.resolve(null);
+      return null;
     }
-    return new Promise((resolve) => {
-      const postData = JSON.stringify(payload);
-      const req = https.request(
-        {
-          hostname: '127.0.0.1',
-          port: this.port,
-          path,
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Connect-Protocol-Version': '1',
-            'X-Codeium-Csrf-Token': this.csrfToken,
-            'Content-Length': Buffer.byteLength(postData)
-          },
-          rejectUnauthorized: false,
-          timeout: 5000
-        },
-        (res) => {
-          let body = '';
-          res.on('data', (c) => (body += c));
-          res.on('end', () => {
-            if (res.statusCode === 200) {
-              try {
-                const raw = JSON.parse(body);
-                resolve(raw as T);
-                return;
-              } catch {
-                // Ignore parse error
-              }
-            }
-            resolve(null);
-          });
-        }
-      );
-
-      req.on('error', () => resolve(null));
-      req.on('timeout', () => {
-        req.destroy();
-        resolve(null);
-      });
-      req.write(postData);
-      req.end();
-    });
+    const res = await this.sendRpcRequest<T>(this.port, this.csrfToken, this.useHttps, rpcPath, payload, 5000);
+    return res.data;
   }
 
   public async fetchQuota(): Promise<LiveQuotaSnapshot | null> {
@@ -369,6 +453,7 @@ export class LiveQuotaClient implements vscode.Disposable {
     if (!userStatusRaw) {
       this.port = 0;
       this.csrfToken = '';
+      this.useHttps = true;
       return null;
     }
 
@@ -376,61 +461,6 @@ export class LiveQuotaClient implements vscode.Disposable {
     this.lastSnapshot = snapshot;
     this._onDidChangeSnapshot.fire(snapshot);
     return snapshot;
-  }
-
-  private findWeeklyQuotaForModel(modelLabel: string, groups: QuotaGroup[]): WeeklyQuotaInfo | undefined {
-    const l = modelLabel.toLowerCase();
-
-    // 1. Match by group description or group name
-    for (const g of groups) {
-      const gName = g.displayName.toLowerCase();
-      const gDesc = (g.description || '').toLowerCase();
-      const isGemini = l.includes('gemini') && (gName.includes('gemini') || gDesc.includes('gemini'));
-      const isClaude = l.includes('claude') && (gName.includes('claude') || gDesc.includes('claude'));
-      const isGpt = l.includes('gpt') && (gName.includes('gpt') || gDesc.includes('gpt'));
-
-      if (isGemini || isClaude || isGpt) {
-        const weeklyBucket = g.buckets.find((b) => b.window === 'weekly' || b.bucketId.toLowerCase().includes('weekly'));
-        if (weeklyBucket) {
-          return {
-            remainingFraction: weeklyBucket.remainingFraction,
-            remainingPercentage: weeklyBucket.remainingPercentage,
-            resetTime: weeklyBucket.resetTime,
-            timeUntilResetFormatted: weeklyBucket.timeUntilResetFormatted,
-            description: weeklyBucket.description
-          };
-        }
-      }
-    }
-
-    // 2. Fallback: match by bucketId substring
-    for (const g of groups) {
-      for (const b of g.buckets) {
-        const bId = b.bucketId.toLowerCase();
-        if (b.window === 'weekly' || bId.includes('weekly')) {
-          if (l.includes('gemini') && bId.includes('gemini')) {
-            return {
-              remainingFraction: b.remainingFraction,
-              remainingPercentage: b.remainingPercentage,
-              resetTime: b.resetTime,
-              timeUntilResetFormatted: b.timeUntilResetFormatted,
-              description: b.description
-            };
-          }
-          if ((l.includes('claude') || l.includes('gpt')) && (bId.includes('3p') || bId.includes('claude') || bId.includes('gpt'))) {
-            return {
-              remainingFraction: b.remainingFraction,
-              remainingPercentage: b.remainingPercentage,
-              resetTime: b.resetTime,
-              timeUntilResetFormatted: b.timeUntilResetFormatted,
-              description: b.description
-            };
-          }
-        }
-      }
-    }
-
-    return undefined;
   }
 
   private parseResponse(userData: any, quotaSummaryData?: any): LiveQuotaSnapshot {
@@ -490,116 +520,12 @@ export class LiveQuotaClient implements vscode.Disposable {
     }
 
     const rawModels = userStatus.cascadeModelConfigData?.clientModelConfigs || [];
-    const models: ModelQuotaInfo[] = [];
-
-    for (const m of rawModels) {
-      if (m.label && isObsoleteModel(m.label)) {
-        continue;
-      }
-      const quotaInfo = m.quotaInfo ?? m.quota_info;
-      const remFrac = quotaInfo?.remainingFraction ?? quotaInfo?.remaining_fraction;
-      const resetTimeStr = quotaInfo?.resetTime ?? quotaInfo?.reset_time;
-      const resetTime = resetTimeStr ? new Date(resetTimeStr) : new Date(0);
-      const diffMs = resetTime.getTime() - now.getTime();
-
-      const weekly = this.findWeeklyQuotaForModel(m.label || '', quotaGroups);
-
-      // Determine model remaining fraction:
-      // When quota is exhausted, proto3 omits remainingFraction from JSON (default 0.0 value).
-      // If resetTime is in future (diffMs > 0), the missing field represents 0.0, NOT 1.0!
-      let fraction: number;
-      if (remFrac !== undefined) {
-        fraction = Number(remFrac);
-      } else if (quotaInfo && diffMs > 0) {
-        fraction = 0.0;
-      } else if (quotaInfo) {
-        fraction = 1.0;
-      } else {
-        fraction = 1.0;
-      }
-
-      // If weekly limit is exhausted (0%), the quota IS OVER!
-      // Even if the 5-hour window refilled to 100%, the user cannot use the model because weekly limit is 0%.
-      let isExhausted = fraction === 0;
-      let effectiveResetTime = resetTime;
-      let effectiveDiffMs = diffMs;
-
-      if (weekly && weekly.remainingFraction === 0) {
-        isExhausted = true;
-        fraction = 0.0;
-        effectiveResetTime = weekly.resetTime;
-        effectiveDiffMs = weekly.resetTime.getTime() - now.getTime();
-      }
-
-      const percent = fraction * 100;
-
-      models.push({
-        label: m.label || 'Unknown Model',
-        modelId: m.modelOrAlias?.model ?? m.model_or_alias?.model ?? 'unknown',
-        remainingFraction: fraction,
-        remainingPercentage: percent,
-        isExhausted,
-        resetTime: effectiveResetTime,
-        timeUntilResetFormatted: quotaInfo || weekly
-          ? this.formatTimeDiff(effectiveDiffMs, effectiveResetTime)
-          : 'Full / Ready',
-        weeklyQuota: weekly
-      });
-    }
-
-    const getRank = (label: string): number => {
-      const l = label.toLowerCase();
-
-      // 1. Gemini Flash Models (e.g. Gemini 3.8 Flash (High), Gemini 3.7 Flash...)
-      if (l.includes('gemini') && l.includes('flash')) {
-        const vMatch = l.match(/(\d+\.?\d*)/);
-        const version = vMatch ? parseFloat(vMatch[1]) : 3.0;
-        let tierOffset = 0.05;
-        if (l.includes('high')) tierOffset = 0.01;
-        else if (l.includes('medium')) tierOffset = 0.02;
-        else if (l.includes('low')) tierOffset = 0.03;
-        // Higher version gets lower rank number (so sorted first)
-        return 100 - (version * 10) + tierOffset;
-      }
-
-      // 2. Gemini Pro Models (e.g. Gemini 3.1 Pro (High))
-      if (l.includes('gemini') && l.includes('pro')) {
-        const vMatch = l.match(/(\d+\.?\d*)/);
-        const version = vMatch ? parseFloat(vMatch[1]) : 3.0;
-        let tierOffset = 0.05;
-        if (l.includes('high')) tierOffset = 0.01;
-        else if (l.includes('low')) tierOffset = 0.03;
-        return 200 - (version * 10) + tierOffset;
-      }
-
-      // 3. Claude Sonnet
-      if (l.includes('claude') && l.includes('sonnet')) {
-        const vMatch = l.match(/(\d+\.?\d*)/);
-        const version = vMatch ? parseFloat(vMatch[1]) : 4.0;
-        return 300 - (version * 10);
-      }
-
-      // 4. Claude Opus
-      if (l.includes('claude') && l.includes('opus')) {
-        const vMatch = l.match(/(\d+\.?\d*)/);
-        const version = vMatch ? parseFloat(vMatch[1]) : 4.0;
-        return 310 - (version * 10);
-      }
-
-      // 5. Generic Claude
-      if (l.includes('claude')) {
-        return 350;
-      }
-
-      // 6. GPT
-      if (l.includes('gpt')) {
-        return 400;
-      }
-
-      return 500;
-    };
-
-    models.sort((a, b) => getRank(a.label) - getRank(b.label) || a.label.localeCompare(b.label));
+    const models = parseClientModelConfigs(
+      rawModels,
+      quotaGroups,
+      (ms, rt) => this.formatTimeDiff(ms, rt),
+      now
+    );
 
     return {
       timestamp: new Date(),

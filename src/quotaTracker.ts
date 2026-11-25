@@ -1,18 +1,12 @@
 import * as vscode from 'vscode';
 import { QuotaConfig, DisplayStyle, PrecisionMode, LiveQuotaSnapshot, ModelQuotaInfo, QuotaAlertEvent, BurnRateEstimate, ModelTrendInfo, isObsoleteModel } from './types';
+import { DEFAULT_PINNED_MODEL, MODEL_ABBREVIATIONS, getModelAbbreviation as resolveModelAbbreviation } from './modelUtils';
 import { LiveQuotaClient } from './liveQuotaClient';
 import { AlertManager } from './alertManager';
 import { BurnRateTracker } from './burnRateTracker';
 import { HistoryTracker } from './historyTracker';
 
-export const MODEL_ABBREVIATIONS: Record<string, string> = {
-  'Gemini 3.8 Flash (High)': 'G3.8F',
-  'Gemini 3.8 Flash (Medium)': 'G3.8F(M)',
-  'Gemini 3.8 Flash (Low)': 'G3.8F(L)',
-  'Claude Sonnet 4.6 (Thinking)': 'Claude',
-  'Claude Opus 4.6 (Thinking)': 'Opus',
-  'GPT-OSS 120B (Medium)': 'GPT'
-};
+export { MODEL_ABBREVIATIONS };
 
 export class QuotaTracker {
   private config: QuotaConfig;
@@ -153,6 +147,10 @@ export class QuotaTracker {
 
   public getDefaultModels(): ModelQuotaInfo[] {
     const defaultLabels = [
+      'Gemini 4 Hydrogen (High)',
+      'Gemini 4 Hydrogen (XHigh)',
+      'Gemini 4 Hydrogen (Medium)',
+      'Gemini 4 Hydrogen (Low)',
       'Gemini 3.8 Flash (High)',
       'Gemini 3.8 Flash (Medium)',
       'Gemini 3.8 Flash (Low)',
@@ -188,7 +186,7 @@ export class QuotaTracker {
         return valid;
       }
     }
-    return ['Gemini 3.8 Flash (High)'];
+    return [DEFAULT_PINNED_MODEL];
   }
 
   public async healPinnedModels(validModels: string[]): Promise<void> {
@@ -209,7 +207,7 @@ export class QuotaTracker {
 
   public async resetToDefaultModel(): Promise<void> {
     const models = this.getModels();
-    const defaultModel = models.length > 0 ? models[0].label : 'Gemini 3.8 Flash (High)';
+    const defaultModel = models.length > 0 ? models[0].label : DEFAULT_PINNED_MODEL;
     await this.healPinnedModels([defaultModel]);
   }
 
@@ -239,51 +237,7 @@ export class QuotaTracker {
   }
 
   public getModelAbbreviation(label: string): string {
-    if (MODEL_ABBREVIATIONS[label]) {
-      return MODEL_ABBREVIATIONS[label];
-    }
-
-    const trimmed = label.trim();
-
-    // 1. Dynamic Gemini Flash Parser: e.g. "Gemini 3.8 Flash (High)" -> "G3.8F"
-    const geminiFlashMatch = trimmed.match(/gemini\s*(\d+\.?\d*)\s*flash(?:\s*\((High|Medium|Low)\))?/i);
-    if (geminiFlashMatch) {
-      const ver = geminiFlashMatch[1] || '';
-      const tier = geminiFlashMatch[2]?.toLowerCase();
-      const tierSuffix = tier === 'medium' ? '(M)' : tier === 'low' ? '(L)' : '';
-      return `G${ver}F${tierSuffix}`;
-    }
-
-    // 2. Dynamic Gemini Pro Parser: e.g. "Gemini 3.8 Pro (High)" -> "G3.8P"
-    const geminiProMatch = trimmed.match(/gemini\s*(\d+\.?\d*)\s*pro(?:\s*\((High|Medium|Low)\))?/i);
-    if (geminiProMatch) {
-      const ver = geminiProMatch[1] || '';
-      const tier = geminiProMatch[2]?.toLowerCase();
-      const tierSuffix = tier === 'low' ? '(L)' : '';
-      return `G${ver}P${tierSuffix}`;
-    }
-
-    // 3. Claude Parser
-    if (/claude\s*opus/i.test(trimmed)) {
-      return 'Opus';
-    }
-    if (/claude/i.test(trimmed)) {
-      return 'Claude';
-    }
-
-    // 4. GPT Parser
-    if (/gpt/i.test(trimmed)) {
-      return 'GPT';
-    }
-
-    if (trimmed.includes('Flash')) {
-      return 'Flash';
-    }
-    if (trimmed.includes('Pro')) {
-      return 'Pro';
-    }
-
-    return trimmed.substring(0, 6);
+    return resolveModelAbbreviation(label);
   }
 
   /**
@@ -316,7 +270,7 @@ export class QuotaTracker {
     const savedPinned = this.context.globalState.get<string[]>('gravitypulse.pinnedModels');
     const configPinned = wsConfig.get<string[]>('pinnedModels');
 
-    // Priority: 1. Saved globalState -> 2. Config -> 3. Default ['Gemini 3.8 Flash (High)']
+    // Priority: 1. Saved globalState -> 2. Config -> 3. Default ['Gemini 4 Hydrogen (High)']
     let pinned: string[] = [];
     if (savedPinned && Array.isArray(savedPinned) && savedPinned.length > 0) {
       pinned = savedPinned.filter((m) => !isObsoleteModel(m));
@@ -325,7 +279,7 @@ export class QuotaTracker {
     }
 
     if (pinned.length === 0) {
-      pinned = ['Gemini 3.8 Flash (High)'];
+      pinned = [DEFAULT_PINNED_MODEL];
       // Automatically migrate and save valid default
       this.context.globalState.update('gravitypulse.pinnedModels', pinned);
     }

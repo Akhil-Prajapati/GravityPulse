@@ -3,6 +3,12 @@ const { AlertManager } = require('../dist/alertManager');
 const { BurnRateTracker } = require('../dist/burnRateTracker');
 const { HistoryTracker } = require('../dist/historyTracker');
 const { isObsoleteModel } = require('../dist/types');
+const {
+  getModelAbbreviation,
+  getModelRank,
+  parseClientModelConfigs,
+  parseDaemonHubJson
+} = require('../dist/modelUtils');
 
 // 1. Existing Point-to-point precision tests
 function testPointToPointCalculations() {
@@ -826,37 +832,18 @@ function testProto3ZeroAndWeeklyQuota() {
   console.log('✅ Proto3 Zero Omission Fix & Weekly Quota Linking tests passed!');
 }
 
-// 7. Feature: Dynamic Model Abbreviations & Version Ranking
+// 7. Feature: Dynamic Model Abbreviations & Version Ranking (using real compiled modelUtils)
 function testDynamicModelAbbreviationsAndRanking() {
   console.log('🧪 Testing Dynamic Model Abbreviations & Version-Based Ranking...');
 
-  function getModelAbbreviation(label) {
-    const trimmed = label.trim();
-    const geminiFlashMatch = trimmed.match(/gemini\s*(\d+\.?\d*)\s*flash(?:\s*\((High|Medium|Low)\))?/i);
-    if (geminiFlashMatch) {
-      const ver = geminiFlashMatch[1] || '';
-      const tier = geminiFlashMatch[2]?.toLowerCase();
-      const tierSuffix = tier === 'medium' ? '(M)' : tier === 'low' ? '(L)' : '';
-      return `G${ver}F${tierSuffix}`;
-    }
-
-    const geminiProMatch = trimmed.match(/gemini\s*(\d+\.?\d*)\s*pro(?:\s*\((High|Medium|Low)\))?/i);
-    if (geminiProMatch) {
-      const ver = geminiProMatch[1] || '';
-      const tier = geminiProMatch[2]?.toLowerCase();
-      const tierSuffix = tier === 'low' ? '(L)' : '';
-      return `G${ver}P${tierSuffix}`;
-    }
-
-    if (/claude\s*opus/i.test(trimmed)) return 'Opus';
-    if (/claude/i.test(trimmed)) return 'Claude';
-    if (/gpt/i.test(trimmed)) return 'GPT';
-    if (trimmed.includes('Flash')) return 'Flash';
-    if (trimmed.includes('Pro')) return 'Pro';
-    return trimmed.substring(0, 6);
-  }
-
-  // Test dynamic abbreviation generation
+  // Test dynamic abbreviation generation (including Gemini 4 & XHigh)
+  assert.strictEqual(getModelAbbreviation('Gemini 4 Hydrogen (High)'), 'G4H');
+  assert.strictEqual(getModelAbbreviation('Gemini 4 Hydrogen (XHigh)'), 'G4H(XH)');
+  assert.strictEqual(getModelAbbreviation('Gemini 4 Hydrogen (Medium)'), 'G4H(M)');
+  assert.strictEqual(getModelAbbreviation('Gemini 4 Hydrogen (Low)'), 'G4H(L)');
+  assert.strictEqual(getModelAbbreviation('Gemini 4 Neon'), 'G4N');
+  assert.strictEqual(getModelAbbreviation('Gemini 4 Carbon'), 'G4C');
+  assert.strictEqual(getModelAbbreviation('Gemini 4 Argon'), 'G4A');
   assert.strictEqual(getModelAbbreviation('Gemini 3.8 Flash (High)'), 'G3.8F');
   assert.strictEqual(getModelAbbreviation('Gemini 3.8 Flash (Medium)'), 'G3.8F(M)');
   assert.strictEqual(getModelAbbreviation('Gemini 3.8 Flash (Low)'), 'G3.8F(L)');
@@ -864,51 +851,115 @@ function testDynamicModelAbbreviationsAndRanking() {
   assert.strictEqual(getModelAbbreviation('Gemini 4.0 Pro (High)'), 'G4.0P');
   assert.strictEqual(getModelAbbreviation('Claude Sonnet 4.6 (Thinking)'), 'Claude');
   assert.strictEqual(getModelAbbreviation('Claude Opus 4.6 (Thinking)'), 'Opus');
+  assert.strictEqual(getModelAbbreviation('Claude Sonnet 5.5 (Thinking)'), 'Claude5.5');
+  assert.strictEqual(getModelAbbreviation('Claude Opus 5.5 (Thinking)'), 'Opus5.5');
   assert.strictEqual(getModelAbbreviation('GPT-OSS 120B (Medium)'), 'GPT');
-
-  // Test dynamic ranking
-  const getRank = (label) => {
-    const l = label.toLowerCase();
-    if (l.includes('gemini') && l.includes('flash')) {
-      const vMatch = l.match(/(\d+\.?\d*)/);
-      const version = vMatch ? parseFloat(vMatch[1]) : 3.0;
-      let tierOffset = 0.05;
-      if (l.includes('high')) tierOffset = 0.01;
-      else if (l.includes('medium')) tierOffset = 0.02;
-      else if (l.includes('low')) tierOffset = 0.03;
-      return 100 - (version * 10) + tierOffset;
-    }
-    if (l.includes('gemini') && l.includes('pro')) {
-      const vMatch = l.match(/(\d+\.?\d*)/);
-      const version = vMatch ? parseFloat(vMatch[1]) : 3.0;
-      let tierOffset = 0.05;
-      if (l.includes('high')) tierOffset = 0.01;
-      else if (l.includes('low')) tierOffset = 0.03;
-      return 200 - (version * 10) + tierOffset;
-    }
-    if (l.includes('claude') && l.includes('sonnet')) return 300;
-    if (l.includes('claude') && l.includes('opus')) return 310;
-    if (l.includes('claude')) return 350;
-    if (l.includes('gpt')) return 400;
-    return 500;
-  };
 
   const modelList = [
     'Claude Sonnet 4.6 (Thinking)',
     'Gemini 3.8 Flash (Medium)',
+    'Gemini 4 Hydrogen (Low)',
     'Gemini 3.8 Flash (High)',
     'GPT-OSS 120B (Medium)',
+    'Gemini 4 Hydrogen (XHigh)',
+    'Gemini 4 Hydrogen (High)',
+    'Gemini 4 Hydrogen (Medium)',
     'Gemini 3.8 Flash (Low)'
   ];
 
-  modelList.sort((a, b) => getRank(a) - getRank(b) || a.localeCompare(b));
+  modelList.sort((a, b) => getModelRank(a) - getModelRank(b) || a.localeCompare(b));
 
-  assert.strictEqual(modelList[0], 'Gemini 3.8 Flash (High)', 'Gemini 3.8 High must be sorted #1');
-  assert.strictEqual(modelList[1], 'Gemini 3.8 Flash (Medium)', 'Gemini 3.8 Medium must be sorted #2');
-  assert.strictEqual(modelList[2], 'Gemini 3.8 Flash (Low)', 'Gemini 3.8 Low must be sorted #3');
-  assert.strictEqual(modelList[3], 'Claude Sonnet 4.6 (Thinking)', 'Claude Sonnet must be sorted #4');
+  assert.strictEqual(modelList[0], 'Gemini 4 Hydrogen (High)', 'Gemini 4 Hydrogen (High) must be sorted #1');
+  assert.strictEqual(modelList[1], 'Gemini 4 Hydrogen (XHigh)', 'Gemini 4 Hydrogen (XHigh) must be sorted #2');
+  assert.strictEqual(modelList[2], 'Gemini 4 Hydrogen (Medium)', 'Gemini 4 Hydrogen (Medium) must be sorted #3');
+  assert.strictEqual(modelList[3], 'Gemini 4 Hydrogen (Low)', 'Gemini 4 Hydrogen (Low) must be sorted #4');
+  assert.strictEqual(modelList[4], 'Gemini 3.8 Flash (High)', 'Gemini 3.8 High must follow Gemini 4');
+  assert.strictEqual(modelList[5], 'Gemini 3.8 Flash (Medium)', 'Gemini 3.8 Medium must follow');
+  assert.strictEqual(modelList[6], 'Gemini 3.8 Flash (Low)', 'Gemini 3.8 Low must follow');
+  assert.strictEqual(modelList[7], 'Claude Sonnet 4.6 (Thinking)', 'Claude Sonnet must follow Gemini');
+  assert.strictEqual(modelList[8], 'GPT-OSS 120B (Medium)', 'GPT-OSS must be last');
 
   console.log('✅ Dynamic Model Abbreviations & Version-Based Ranking tests passed!');
+}
+
+function testDaemonHubDiscoveryAndDisabledModelFiltering() {
+  console.log('🧪 Testing Antigravity 2.0 Daemon Hub Parsing & Disabled Model Filtering...');
+
+  const validHub = parseDaemonHubJson(
+    JSON.stringify({
+      pid: 220060,
+      httpsPort: 41645,
+      httpPort: 41837,
+      lsVersion: '2.35.0',
+      csrfToken: 'c8432168-869a-4dad-9664-f806553b86d1'
+    }),
+    '/tmp/hub_41837.json',
+    1700000000000
+  );
+  assert.ok(validHub, 'Valid hub JSON must parse');
+  assert.strictEqual(validHub.pid, 220060);
+  assert.strictEqual(validHub.httpsPort, 41645);
+  assert.strictEqual(validHub.httpPort, 41837);
+  assert.strictEqual(validHub.csrfToken, 'c8432168-869a-4dad-9664-f806553b86d1');
+
+  assert.strictEqual(parseDaemonHubJson('{}', '/tmp/empty.json', 0), null, 'Empty hub JSON must be rejected');
+  assert.strictEqual(parseDaemonHubJson('not-json', '/tmp/bad.json', 0), null, 'Invalid JSON must return null');
+
+  const now = new Date('2026-11-25T11:20:00Z');
+  const mockGroups = [
+    {
+      displayName: 'Gemini Models',
+      description: 'Models within this group: Gemini 4 Hydrogen, Gemini 3.8 Flash',
+      buckets: [
+        {
+          bucketId: 'gemini-weekly',
+          displayName: 'Weekly Limit Remaining',
+          window: 'weekly',
+          remainingFraction: 0.88,
+          remainingPercentage: 88,
+          resetTime: new Date('2026-12-02T05:04:29Z'),
+          timeUntilResetFormatted: 'Auto-refills in 6d 17h'
+        }
+      ]
+    }
+  ];
+
+  const rawModels = [
+    {
+      label: 'Gemini 4 Hydrogen (High)',
+      modelId: 'gemini-4-hydrogen-high',
+      modelOrAlias: { model: 'MODEL_PLACEHOLDER_M525' },
+      quotaInfo: { remainingFraction: 0.81175, resetTime: '2026-11-25T15:04:29Z' }
+    },
+    {
+      label: 'Gemini 4 Hydrogen (XHigh)',
+      modelId: 'gemini-4-hydrogen-xhigh',
+      modelOrAlias: { model: 'MODEL_PLACEHOLDER_M528' },
+      quotaInfo: { remainingFraction: 0.81175, resetTime: '2026-11-25T15:04:29Z' }
+    },
+    {
+      label: 'Gemini 4 Carbon',
+      modelId: 'gemini-4-carbon-disabled',
+      disabled: true,
+      quotaInfo: {}
+    },
+    {
+      label: 'Gemini 3.8 Flash (High)',
+      modelId: 'gemini-3.8-flash-high',
+      quotaInfo: { remainingFraction: 0.81175, resetTime: '2026-11-25T15:04:29Z' }
+    }
+  ];
+
+  const parsedModels = parseClientModelConfigs(rawModels, mockGroups, () => 'Auto-refills in 3h 44m', now);
+  assert.strictEqual(parsedModels.length, 3, 'Disabled models must be excluded');
+  assert.strictEqual(parsedModels[0].label, 'Gemini 4 Hydrogen (High)');
+  assert.strictEqual(parsedModels[0].modelId, 'gemini-4-hydrogen-high');
+  assert.ok(parsedModels[0].weeklyQuota, 'Gemini 4 Hydrogen must link to Gemini weekly quota');
+  assert.strictEqual(parsedModels[0].weeklyQuota.remainingPercentage, 88);
+  assert.strictEqual(parsedModels[1].label, 'Gemini 4 Hydrogen (XHigh)');
+  assert.strictEqual(parsedModels[2].label, 'Gemini 3.8 Flash (High)');
+
+  console.log('✅ Antigravity 2.0 Daemon Hub Parsing & Disabled Model Filtering tests passed!');
 }
 
 function testObsoleteModelRemovalAndAutoHealing() {
@@ -963,6 +1014,7 @@ function runAll() {
   testHistoryTrackerAndSparklines();
   testProto3ZeroAndWeeklyQuota();
   testDynamicModelAbbreviationsAndRanking();
+  testDaemonHubDiscoveryAndDisabledModelFiltering();
   testObsoleteModelRemovalAndAutoHealing();
   console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY!');
 }

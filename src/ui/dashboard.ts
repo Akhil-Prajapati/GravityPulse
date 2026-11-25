@@ -27,8 +27,8 @@ export class DashboardManager {
       if (!isConnected) {
         items.push({
           label: '$(sync~spin) Antigravity Server: Connecting / Offline',
-          description: 'Click to scan and reconnect to local Language Server',
-          detail: '   Attempts discovery across Windows, Linux & macOS processes and localhost ports',
+          description: 'Click to scan and reconnect to local Antigravity Server',
+          detail: '   Discovers Antigravity 2.0 daemon hubs and local Language Server processes',
           action: 'sync'
         });
       }
@@ -214,11 +214,11 @@ export class DashboardManager {
 
   public async promptChangeStyle(): Promise<void> {
     const styleOptions = [
-      { label: '$(zap) G3.8F: 94.1%', description: 'Zap Energy ThemeIcon (Default)', value: 'zap-percent' },
-      { label: '$(activity) G3.8F: 94.1%', description: 'Activity Pulse ThemeIcon', value: 'activity-percent' },
-      { label: '$(zap) G3.8F [███████░] 94.1%', description: 'Battery Bar with Segments', value: 'battery-bar' },
+      { label: '$(zap) G4H: 94.1%', description: 'Zap Energy ThemeIcon (Default)', value: 'zap-percent' },
+      { label: '$(activity) G4H: 94.1%', description: 'Activity Pulse ThemeIcon', value: 'activity-percent' },
+      { label: '$(zap) G4H [███████░] 94.1%', description: 'Battery Bar with Segments', value: 'battery-bar' },
       { label: '94.1% $(zap)', description: 'Minimalist', value: 'minimal' },
-      { label: '$(zap) G3.8F: 94.1% [███████░]', description: 'Detailed with Bar', value: 'detailed' }
+      { label: '$(zap) G4H: 94.1% [███████░]', description: 'Detailed with Bar', value: 'detailed' }
     ];
 
     const pick = await vscode.window.showQuickPick(styleOptions, {
