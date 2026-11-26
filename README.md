@@ -1,16 +1,16 @@
-# ⚡ GravityPulse — Antigravity AI Quota (AGQ) Battery
+# ⚡ GravityPulse — Antigravity AI Quota, Token Limit & Battery Monitor
 
 <p align="center">
-  <img src="assets/preview.png" alt="GravityPulse Preview" width="680" style="max-width: 100%; border-radius: 8px;" />
+  <img src="assets/preview.png" alt="GravityPulse Antigravity Quota Dashboard" width="680" style="max-width: 100%; border-radius: 8px;" />
 </p>
 
 <p align="center">
-  <strong>The #1 Real-Time Quota & Battery Monitor for Google Antigravity & VS Code</strong><br>
-  <em>Live Server Quota • Multi-Tier Anti-Spam Alerts • Burn-Rate Pace Estimator • Trend Sparklines • Prompt Credits Pool</em>
+  <strong>Real-Time AI Quota, Rate Limit &amp; Token Battery Monitor for Google Antigravity, Antigravity IDE &amp; VS Code</strong><br>
+  <em>Antigravity 2.0 Live Sync • Burn-Rate Pace Estimator • Trend Sparklines • Weekly Limits • Multi-Tier Alerts • Prompt Credits</em>
 </p>
 
 <p align="center">
-  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.1.2-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
+  <a href="https://open-vsx.org/extension/akhilninja/gravity-pulse"><img src="https://img.shields.io/badge/Open%20VSX-v1.1.3-C160EF?style=for-the-badge&logo=visualstudiocode" alt="Open VSX" /></a>
   <a href="https://github.com/Akhil-Prajapati/GravityPulse"><img src="https://img.shields.io/badge/GitHub-GravityPulse-181717?style=for-the-badge&logo=github" alt="GitHub" /></a>
   <img src="https://img.shields.io/badge/precision-point--to--point-blue?style=for-the-badge" alt="Precision" />
   <img src="https://img.shields.io/badge/status-live%20IDE%20server-brightgreen?style=for-the-badge" alt="Status" />
@@ -19,13 +19,11 @@
 
 ---
 
-## 🚀 Never Get Throttled Mid-Task Again
+## 🚀 Track Your Antigravity AI Quota Before You Hit a 429 Wall
 
-Have you ever been in the middle of a complex refactor or architectural design with Antigravity AI, only to hit an **unexpected quota wall** with zero warning?
+**GravityPulse** is a phone-style AI battery status bar monitor for **Google Antigravity**, **Antigravity IDE**, **VSCodium**, and **VS Code**. It connects directly to your local Antigravity server to display exact point-to-point percentages, estimate remaining burn time, track shared weekly limits, plot usage sparklines, and alert you before your token quota runs out.
 
-**GravityPulse** fixes that permanently. It brings a sleek, phone-style real-time battery status bar monitor to Antigravity IDE and VS Code. Sitting quietly in your bottom bar, it connects directly to your local **Antigravity Language Server** to track exact live percentages, calculate remaining burn time, plot historical trend sparklines, and alert you before you run out of tokens.
-
-> **Trending AI Models Supported:** Gemini 4 Hydrogen (High/XHigh/Medium/Low), Gemini 4 Neon, Gemini 4 Carbon, Gemini 4 Argon, Gemini 3.8 Flash (High/Medium/Low), Claude Sonnet 4.6 / 5.5 (Thinking), Claude Opus 4.6 / 5.5, GPT-OSS 120B, and Available Monthly Prompt Credits.
+> **Supported Models & Credits:** `Gemini 4 Hydrogen (High / XHigh / Medium / Low)`, `Gemini 4 Neon`, `Gemini 4 Carbon`, `Gemini 4 Argon`, `Gemini 3.8 Flash`, `Claude Sonnet 4.6 / 5.5`, `Claude Opus 4.6 / 5.5`, `GPT-OSS 120B`, and Monthly Prompt Credits.
 
 ---
 
@@ -35,11 +33,11 @@ Have you ever been in the middle of a complex refactor or architectural design w
   <table style="border: none; border-collapse: collapse;">
     <tr>
       <td width="50%" align="center" style="border: none; padding: 8px;">
-        <strong>🕹️ Interactive Multi-Model Dashboard</strong><br><br>
-        <img src="assets/popover.png" alt="GravityPulse Interactive Dashboard" width="340" style="max-width: 100%; border-radius: 6px;" />
+        <strong>🔋 Hover Card &amp; Weekly Limit Analytics</strong><br><br>
+        <img src="assets/popover.png" alt="GravityPulse Hover Card Tooltip" width="340" style="max-width: 100%; border-radius: 6px;" />
       </td>
       <td width="50%" align="center" style="border: none; padding: 8px;">
-        <strong>🎨 5 Customizable Battery Styles</strong><br><br>
+        <strong>🎨 5 Customizable Status Bar Styles</strong><br><br>
         <img src="assets/styles.png" alt="GravityPulse Status Bar Styles" width="340" style="max-width: 100%; border-radius: 6px;" />
       </td>
     </tr>
@@ -50,202 +48,78 @@ Have you ever been in the middle of a complex refactor or architectural design w
 
 ## 🌟 Key Features
 
-### 1. ⚡ 100% Real Live Server Connection
-- Auto-discovers Antigravity 2.0 daemon hubs (`~/.gemini/antigravity/daemon/hub_*.json`) as well as legacy local Antigravity Language Server processes across Windows, Linux, and macOS, querying `/exa.language_server_pb.LanguageServerService/GetUserStatus`.
-- Point-to-point decimal accuracy (e.g. `94.1%`, not rounded estimates like `~90%`).
-
-### 2. ⏳ Burn-Rate & Time-to-Empty Pace Estimator
-- Automatically analyzes your rolling polling buffer to estimate how long before your active model runs out of quota.
-- Passively surfaces right under the quota line: **`~38m until empty at current pace`** or **`~1h 15m until empty at current pace`**.
-- Omitted automatically when quota is flat or recharging.
-
-### 3. 📈 Historical Usage Sparklines & Plain-Language Trends
-- Visualizes recent quota history via inline unicode block sparklines (e.g., `▇▆▅▅▄▃▂ `).
-- Features clear, plain-language trend labels:
-  - **`▃▄▅▆ (declining)`** — Quota is being consumed.
-  - **`██████ (stable)`** — Quota is flat and preserved.
-  - **`▃▅▇ (rising)`** — Model is recharging or refilled.
-  - **`— (gathering data)`** — Initializing on startup.
-- Stores history locally in `globalState` (capped at 100 points) and prunes data older than 24 hours automatically.
-
-### 4. 🔔 Multi-Tier Anti-Spam Quota Alerts & Instant Controls
-- **3 Threshold Tiers**: Info (`20%`), Critical (`10%`), and Severe (`5%`).
-- **Hysteresis & Anti-Jitter Protection**: Locks alerted state so minor fluctuations or exhausted 0% quotas never spam notifications repeatedly.
-- **Interactive Action Buttons**: Directly on notification toasts:
-  - **`Manage Models`** — Open Interactive Dashboard.
-  - **`Mute for 1 Hour`** — Temporarily silence toasts while you work.
-  - **`Turn Off Alerts`** — Disables toast notifications with one click.
-- **Refill Reset**: Automatically resets alert state only when quota genuinely refills above threshold.
-- **2-Cycle Debounce**: Flapping protection prevents annoying alert spam near boundary points.
-- **Global Cooldown**: Enforces max 1 toast per 2 minutes across all sources.
-- **Pinned Only**: Never fires alerts for models you haven't pinned.
-
-### 5. 💳 Dedicated Prompt Credits Pool Tracking
-- Monitors your monthly overage credit pool (e.g. `12,000 / 50,000` credits) independently from per-model quota.
-- Dedicated threshold alerts (`25%` Info, `10%` Critical, `3%` Severe) with clear messaging distinguishing credits from model quotas.
-
-### 6. 📌 Multi-Model Status Bar Pinning
-- Pin multiple models simultaneously in your status bar with quick checkmark toggles.
-- Individual hover cards for each pinned model with deep quota analytics, refill schedules, burn rate, and sparklines.
-
-### 7. 📅 Group Weekly Limit & Days-Based Refill Countdowns
-- Concurrently queries `/RetrieveUserQuotaSummary` to track shared weekly limits across Gemini, Claude, and GPT model groups.
-- Displays human-friendly countdowns in days and hours (e.g., **`6d 2h`** instead of confusing raw hours like `146hr left`).
-- Renders **Weekly Limit** directly under Remaining Capacity in hover cards and provides visual gauges in the dashboard.
-- Protects against false 100% readings when quota is depleted.
+- **⚡ Antigravity 2.0 Live Server Sync:** Auto-discovers Antigravity 2.0 daemon hubs (`~/.gemini/antigravity/daemon/hub_*.json`) and legacy Language Server processes across Windows, Linux, and macOS with point-to-point decimal accuracy (e.g. `76.8%`).
+- **📌 Multi-Model Status Bar Pinning:** Pin multiple models side-by-side (`G4H`, `G4H(XH)`, `Claude`, `Opus`, `GPT`) with dedicated hover cards per model.
+- **⏳ Burn-Rate & Time-to-Empty Pace Estimator:** Computes rolling consumption pace (e.g. `~48m until empty at current pace`) and hides automatically when quota is stable or recharging.
+- **📈 Usage Sparklines & Trend Labels:** Inline unicode sparklines (`▇▆▅▅▄▃▂ `) with plain-language trends (`declining`, `stable`, `rising`, `gathering data`), stored locally with automatic 24-hour pruning.
+- **📅 Group Weekly Limits & Days Countdowns:** Queries `/RetrieveUserQuotaSummary` for shared weekly pools across Gemini and Claude/GPT groups with human-readable countdowns (e.g. `6d 17h`) and proto3 zero-quota protection.
+- **🔔 Multi-Tier Anti-Spam Quota Alerts:** Configurable **Info (`20%`)**, **Critical (`10%`)**, and **Severe (`5%`)** tiers with 2-cycle debounce, hysteresis, global cooldown, pinned-only filtering, and one-click **`Manage Models`**, **`Mute for 1 Hour`**, and **`Turn Off Alerts`** actions.
+- **💳 Monthly Prompt Credits Monitoring:** Tracks your overage prompt credit pool independently from model rate limits.
 
 ---
 
-## 📖 User Guide: How to Use GravityPulse
+## 📖 Quick Guide & Battery Styles
 
-### 1. Opening the Dashboard
-- Click any GravityPulse battery icon in the status bar, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> on Mac) and select:
-  ```
-  GravityPulse: Open Quota Battery Dashboard
-  ```
-- **Pin / Unpin Models**: Simply click any model in the list to toggle its checkmark `$(check)`. Checked models immediately display in your status bar.
+1. **Open Dashboard:** Click any GravityPulse battery item in the status bar, or run `GravityPulse: Open Quota Battery Dashboard` from the Command Palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> / <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
+2. **Pin / Unpin Models:** Click any model in the QuickPick menu to toggle it in your status bar.
+3. **Display Styles (`gravitypulse.displayStyle`):**
+   - **Battery Bar (Default):** `⚡ G4H [███████░] 94.1%`
+   - **Zap Percent:** `⚡ G4H: 94.1%`
+   - **Activity Percent:** `📶 G4H: 94.1%`
+   - **Minimalist:** `94.1% ⚡`
+   - **Detailed:** `⚡ G4H: 94.1% [███████░]`
 
-### 2. Switching Status Bar Styles
-Open the dashboard and select **`Change Status Bar Display Style`** (or change `gravitypulse.displayStyle` in Settings):
-- **Battery Bar (Default)**: `⚡ G4H [███████░] 94.1%`
-- **Zap Percent**: `⚡ G4H: 94.1%`
-- **Activity Percent**: `📶 G4H: 94.1%`
-- **Minimalist**: `94.1% ⚡`
-- **Detailed**: `⚡ G4H: 94.1% [███████░]`
+### 🚦 Battery Color Levels
 
-### 3. Switching Percentage Precision
-Choose between:
-- **Single Decimal (Default)**: Real-time exact float (`94.1%`)
-- **Exact Integer**: Rounded whole percentage (`94%`)
-
-### 4. Force-Refreshing Live Quota
-If your computer wakes from sleep or you switch networks, click **`Force Refresh Live Quota`** or run:
-```
-GravityPulse: Refresh Live Quota from Antigravity Server
-```
-
----
-
-## 🚦 Battery Color Scheme
-
-| Icon & Color | Battery Level | Status & Recommendations |
+| Status | Battery Range | Meaning |
 | :--- | :--- | :--- |
-| 🟢 **Green** (`#34A853`) | **70% – 100%** | **Optimal** — Full speed, no rationing needed. |
-| 🟡 **Lime** (`#9ACD32`) | **40% – 70%** | **Good** — Healthy charge level. |
-| 🟠 **Orange** (`#FB8C00`) | **20% – 40%** | **Moderate Warning** — Consider pacing heavy prompts. |
-| 🔴 **Red** (`#EA4335`) | **< 20%** | **Critical Alert** — Approaching rate limit; switch models or conserve. |
+| 🟢 **Green** (`#34A853`) | **70% – 100%** | **Optimal** — Full headroom for heavy agent runs. |
+| 🟡 **Lime** (`#9ACD32`) | **40% – 70%** | **Good** — Healthy quota remaining. |
+| 🟠 **Orange** (`#FB8C00`) | **20% – 40%** | **Warning** — Consider pacing prompts or switching tiers. |
+| 🔴 **Red** (`#EA4335`) | **< 20%** | **Critical** — Approaching rate limit; check refill schedule. |
 
 ---
 
-## ⚙️ Extension Settings Reference
-
-All settings can be customized in VS Code Settings (<kbd>Ctrl</kbd>+<kbd>,</kbd> → search `gravitypulse`):
+## ⚙️ Settings & Commands
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `gravitypulse.pinnedModels` | `["Gemini 4 Hydrogen (High)"]` | AI models displayed simultaneously in the status bar. |
-| `gravitypulse.displayStyle` | `"battery-bar"` | Visual status bar style (`battery-bar`, `zap-percent`, `activity-percent`, `minimal`, `detailed`). |
-| `gravitypulse.precision` | `"single-decimal"` | Numeric format (`single-decimal` or `integer`). |
-| `gravitypulse.pollingIntervalSeconds` | `30` | Interval in seconds between live Language Server polls. |
-| `gravitypulse.warningThreshold` | `20` | Battery % threshold where status bar turns Amber/Yellow. |
-| `gravitypulse.criticalThreshold` | `10` | Battery % threshold where status bar turns Red and triggers Critical alerts. |
-| `gravitypulse.infoThreshold` | `20` | % threshold for informational low-quota alert toasts. |
-| `gravitypulse.severeThreshold` | `5` | % threshold for severe low-quota alert toasts. |
-| `gravitypulse.globalAlertCooldownMinutes` | `2` | Global anti-spam cooldown in minutes between toasts across all models. |
-| `gravitypulse.burnRateSampleCount` | `5` | Number of rolling samples used to compute burn-rate and time-to-empty. |
+| `gravitypulse.pinnedModels` | `["Gemini 4 Hydrogen (High)"]` | Models displayed simultaneously in the status bar. |
+| `gravitypulse.displayStyle` | `"battery-bar"` | Style (`battery-bar`, `zap-percent`, `activity-percent`, `minimal`, `detailed`). |
+| `gravitypulse.precision` | `"single-decimal"` | Numeric precision (`single-decimal` or `integer`). |
+| `gravitypulse.pollingIntervalSeconds` | `30` | Polling interval in seconds against local Antigravity server. |
+| `gravitypulse.warningThreshold` | `20` | % threshold for warning status bar color. |
+| `gravitypulse.criticalThreshold` | `10` | % threshold for critical color and alert tier. |
+| `gravitypulse.infoThreshold` | `20` | % threshold for Info tier toast alert. |
+| `gravitypulse.severeThreshold` | `5` | % threshold for Severe tier toast alert. |
+| `gravitypulse.globalAlertCooldownMinutes` | `2` | Global cooldown in minutes between toast notifications. |
+| `gravitypulse.burnRateSampleCount` | `5` | Rolling sample count for burn-rate ETA estimation. |
 | `gravitypulse.creditsInfoThreshold` | `25` | Prompt credits % threshold for Info tier alert. |
 | `gravitypulse.creditsCriticalThreshold` | `10` | Prompt credits % threshold for Critical tier alert. |
 | `gravitypulse.creditsSevereThreshold` | `3` | Prompt credits % threshold for Severe tier alert. |
-| `gravitypulse.showToastOnLowCredits` | `false` | Master toggle to show or suppress prompt credits toasts (disabled by default). |
-| `gravitypulse.showToastOnLowBattery` | `true` | Master toggle to enable or suppress model notification toasts. |
+| `gravitypulse.showToastOnLowCredits` | `false` | Show toast alerts when prompt credits drop below threshold. |
+| `gravitypulse.showToastOnLowBattery` | `true` | Enable or disable model low-quota toast alerts. |
 
----
-
-## 🎮 Command Palette Commands
-
-| Command | Identifier | Description |
-| :--- | :--- | :--- |
-| **Open Quota Battery Dashboard** | `gravitypulse.showDashboard` | Opens the interactive model toggle and quota overview menu. |
-| **Switch Displayed Model** | `gravitypulse.switchModel` | Quick command to toggle pinned models. |
-| **Refresh Live Quota** | `gravitypulse.syncAntigravityLogs` | Manually scans and queries the local Antigravity Language Server. |
+**Command Palette:** `gravitypulse.showDashboard` (Open Dashboard) • `gravitypulse.switchModel` (Switch Model) • `gravitypulse.syncAntigravityLogs` (Refresh Live Quota) • `gravitypulse.resetStatusBar` (Reset Status Bar)
 
 ---
 
 ## 📥 Installation
 
 ### From Open VSX (Antigravity IDE / VSCodium):
-1. Open the Extensions view (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>).
-2. Search for **`GravityPulse`** or **`akhilninja.gravity-pulse`**.
-3. Click **Install**.
+1. Open Extensions (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>) and search for **`GravityPulse`** (`akhilninja.gravity-pulse`).
+2. Click **Install** or **Update**.
 
 ### Manual VSIX Installation:
-1. Download the latest `.vsix` from [Releases](https://github.com/Akhil-Prajapati/GravityPulse/releases).
-2. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → **`Extensions: Install from VSIX...`**.
-3. Select `gravity-pulse-1.0.7.vsix`.
+1. Download the latest `.vsix` directly from [Open VSX](https://open-vsx.org/extension/akhilninja/gravity-pulse) (click **Download**).
+2. Run <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> → **`Extensions: Install from VSIX...`** and select `akhilninja.gravity-pulse-1.1.3.vsix`.
 
 ---
 
-## 🎭 The "We've All Been There" Scenarios
+## ⭐ Support & Keywords
 
-<div align="center">
-  <table>
-    <tr>
-      <td>
-        <h3>🌙 1. The 2:00 AM Agent Marathon</h3>
-        <p>You’re 95% done generating a complete full-stack refactor with Antigravity AI agent. You fire one last prompt... and BAM: <strong>429 Throttled</strong>. The momentum is ruined. With GravityPulse, the <em>burn-rate pace estimator</em> alerts you beforehand so you can switch models without losing your flow.</p>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <h3>🏎️ 2. The F1 Pit-Crew Model Tag-Team</h3>
-        <p>Why stick to one model? Pin <strong>Gemini 4 Hydrogen</strong>, <strong>Claude Sonnet 4.6</strong>, and <strong>GPT-OSS</strong> side-by-side. When Gemini's battery dips below 20%, seamlessly switch to Claude with zero downtime.</p>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <h3>🔋 3. Phone-Style Battery Peace of Mind</h3>
-        <p>You wouldn't leave home with 4% phone battery without a charger. Don't start massive agentic coding tasks without knowing your token charge. One glance at your status bar gives you total confidence.</p>
-      </td>
-    </tr>
-  </table>
-</div>
+If GravityPulse helps keep your workflow uninterrupted, please leave a ⭐ review on [Open VSX](https://open-vsx.org/extension/akhilninja/gravity-pulse) and star [GitHub](https://github.com/Akhil-Prajapati/GravityPulse).
 
----
+`antigravity quota` • `google antigravity` • `antigravity battery` • `gemini 4 hydrogen` • `gemini 4 neon` • `gemini 3.8 flash` • `claude sonnet` • `claude opus` • `gpt-oss` • `ai quota monitor` • `token limit tracker` • `rate limit monitor` • `burn rate estimator` • `weekly quota` • `prompt credits` • `antigravity ide` • `vscodium`
 
-## 💡 Pro-Gamer Power User Tips
-
-- **⚡ Tip 1: The Triple-Cockpit Setup**  
-  Pin 1 Ultra-Fast Model (`Gemini 4 Hydrogen`) + 1 Deep Reasoning Model (`Claude Sonnet 4.6 Thinking`) + `Prompt Credits`. You'll always know your exact capacity at every tier.
-- **⏳ Tip 2: The Coffee-Break Pace Indicator**  
-  If the hover card says `~15m until empty at current pace`, check the `Auto-Refill Schedule`. If it refills in 10 minutes, grab a quick coffee and come back to a 100% full tank!
-- **🎨 Tip 3: Aesthetic Customization**  
-  Prefer a distraction-free IDE? Switch to **`Minimalist`** (`94.1% ⚡`). Love retro cyberpunk terminal vibes? Switch to **`Battery Bar`** (`⚡ G4H [███████░] 94.1%`).
-
----
-
-## 📊 Visual Battery Gauge Cheatsheet
-
-```text
-[████████] 100%  🟢  MAX CHARGE       — Full speed ahead, fire heavy agent tasks!
-[██████░░]  75%  🟢  HEALTHY LEVEL    — Cruising smoothly with plenty of headroom.
-[████░░░░]  50%  🟡  HALF TANK        — Standard workload, monitor active burns.
-[██░░░░░░]  25%  🟠  MODERATE WARNING — Pace prompts, check auto-refill schedule.
-[█░░░░░░░]  10%  🔴  CRITICAL ALERT   — Switch models or switch to lightweight tasks!
-[░░░░░░░░]   0%  🔥  EXHAUSTED        — Auto-refill timer countdown active.
-```
-
----
-
-## ⭐ Enjoying GravityPulse?
-
-If GravityPulse has saved you from hitting unexpected rate limits and saved your flow-state, please leave a ⭐ **5-star review** on [Open VSX](https://open-vsx.org/extension/akhilninja/gravity-pulse) and star our [GitHub Repository](https://github.com/Akhil-Prajapati/GravityPulse)!
-
----
-
-## 🏷️ Search Tags & Keywords
-`antigravity quota` • `google antigravity` • `gemini 4 hydrogen` • `gemini 4 neon` • `gemini 3.8 flash` • `claude sonnet 4.6` • `claude opus` • `gpt-oss` • `ai battery` • `token monitor` • `burn rate` • `rate limit monitor` • `sparkline trend` • `ai developer tools` • `prompt credits` • `vscodium` • `antigravity ide` • `realtime quota battery`
-
-## 📄 License
-
-MIT © [Akhil Prajapati](https://github.com/Akhil-Prajapati)
-
+**License:** MIT © [Akhil Prajapati](https://github.com/Akhil-Prajapati)
